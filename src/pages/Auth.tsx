@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
@@ -16,7 +17,6 @@ export default function Auth() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) {
       navigate('/');
@@ -31,16 +31,15 @@ export default function Auth() {
     
     if (error) {
       toast({
-        title: 'Sign in failed',
+        title: "Sign in failed",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     } else {
       toast({
-        title: 'Welcome back!',
-        description: 'You have successfully signed in.',
+        title: "Welcome back!",
+        description: "You have been signed in successfully.",
       });
-      navigate('/');
     }
     
     setLoading(false);
@@ -53,23 +52,15 @@ export default function Auth() {
     const { error } = await signUp(email, password);
     
     if (error) {
-      if (error.message.includes('already registered')) {
-        toast({
-          title: 'Account exists',
-          description: 'This email is already registered. Please sign in instead.',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Sign up failed',
-          description: error.message,
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: "Sign up failed",
+        description: error.message,
+        variant: "destructive",
+      });
     } else {
       toast({
-        title: 'Account created!',
-        description: 'Please check your email to confirm your account.',
+        title: "Account created!",
+        description: "Please check your email for verification.",
       });
     }
     
@@ -77,22 +68,26 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">ThoughtStock</h1>
-          <p className="text-muted-foreground">Your professional stock analysis platform</p>
+          <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+            ThoughtStock Journal
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Professional stock analysis platform
+          </p>
         </div>
-        
+
         <Card className="border-border/50 shadow-elegant">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Welcome</CardTitle>
-            <CardDescription className="text-center">
-              Sign in to your account or create a new one
+          <CardHeader>
+            <CardTitle>Welcome</CardTitle>
+            <CardDescription>
+              Sign in to your account or create a new one to get started
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs defaultValue="signin" className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -101,9 +96,9 @@ export default function Auth() {
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
+                    <Label htmlFor="email">Email</Label>
                     <Input
-                      id="signin-email"
+                      id="email"
                       type="email"
                       placeholder="Enter your email"
                       value={email}
@@ -112,9 +107,9 @@ export default function Auth() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
+                    <Label htmlFor="password">Password</Label>
                     <Input
-                      id="signin-password"
+                      id="password"
                       type="password"
                       placeholder="Enter your password"
                       value={password}
@@ -122,12 +117,9 @@ export default function Auth() {
                       required
                     />
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={loading}
-                  >
-                    {loading ? 'Signing in...' : 'Sign In'}
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Sign In
                   </Button>
                 </form>
               </TabsContent>
@@ -154,25 +146,17 @@ export default function Auth() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      minLength={6}
                     />
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={loading}
-                  >
-                    {loading ? 'Creating account...' : 'Sign Up'}
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Sign Up
                   </Button>
                 </form>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
-        
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          By continuing, you agree to our terms and privacy policy
-        </p>
       </div>
     </div>
   );
