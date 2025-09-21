@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, TrendingUp, TrendingDown, AlertTriangle, Zap, Search, Filter, Edit3, DollarSign, Brain, Target, ArrowRight, Calendar, Building2, Users, TrendingUpDown, Globe, Gavel, Wrench } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, TrendingUp, TrendingDown, AlertTriangle, Zap, Search, Filter, Edit3, DollarSign, Brain, Target, ArrowRight, Calendar, Building2, Users, TrendingUpDown, Globe, Gavel, Wrench, Trash2 } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -24,13 +24,21 @@ import { CSS } from '@dnd-kit/utilities';
 import { useDroppable } from "@dnd-kit/core";
 
 // Type definitions
-interface Entry {
+interface StockPosition {
   id: string;
   symbol: string;
   price: string;
   position: 'holding' | 'sold' | 'watching';
-  sentiment: 'bullish' | 'bearish';
-  category: 'catalyst' | 'block';
+  date: string;
+  timestamp: string;
+}
+
+interface AnalysisNote {
+  id: string;
+  stockId: string; // References StockPosition.id
+  symbol: string;  // Denormalized for easy filtering
+  sentiment?: 'bullish' | 'bearish'; // Optional for research notes
+  category: 'catalyst' | 'block' | 'research';
   parentCategory: string;
   title: string;
   description: string;
@@ -39,24 +47,20 @@ interface Entry {
   tags: string[];
 }
 
-interface StockProject {
-  symbol: string;
-  entries: Entry[];
-  latestPrice: string | null;
-  latestPosition: 'holding' | 'sold' | 'watching';
-  latestDate: string | null;
-}
-
-interface NewEntry {
-  date: string;
+interface NewStockPosition {
   symbol: string;
   price: string;
   position: 'holding' | 'sold' | 'watching';
-  sentiment: 'bullish' | 'bearish';
-  category: 'catalyst' | 'block';
+  date: string;
+}
+
+interface NewAnalysisNote {
+  sentiment?: 'bullish' | 'bearish'; // Optional for research notes
+  category: 'catalyst' | 'block' | 'research';
   parentCategory: string;
   title: string;
   description: string;
+  date: string;
   tags: string;
 }
 
@@ -71,13 +75,39 @@ const PARENT_CATEGORIES = [
 ];
 
 const ThoughtStockJournal = () => {
-  // Initialize with example data
-  const exampleEntries: Entry[] = [
+  // Example data
+  const examplePositions: StockPosition[] = [
     {
       id: '1',
       symbol: 'AAPL',
       price: '182.50',
       position: 'holding',
+      date: '2024-09-15',
+      timestamp: '2024-09-15T10:00:00.000Z',
+    },
+    {
+      id: '2',
+      symbol: 'TSLA',
+      price: '258.50',
+      position: 'watching',
+      date: '2024-09-14',
+      timestamp: '2024-09-14T11:20:00.000Z',
+    },
+    {
+      id: '3',
+      symbol: 'NVDA',
+      price: '436.20',
+      position: 'holding',
+      date: '2024-09-16',
+      timestamp: '2024-09-16T15:30:00.000Z',
+    }
+  ];
+
+  const exampleNotes: AnalysisNote[] = [
+    {
+      id: '1',
+      stockId: '1',
+      symbol: 'AAPL',
       sentiment: 'bullish',
       category: 'catalyst',
       parentCategory: 'financial',
@@ -89,9 +119,8 @@ const ThoughtStockJournal = () => {
     },
     {
       id: '2',
+      stockId: '1',
       symbol: 'AAPL',
-      price: '180.25',
-      position: 'holding',
       sentiment: 'bullish',
       category: 'block',
       parentCategory: 'market',
@@ -103,37 +132,8 @@ const ThoughtStockJournal = () => {
     },
     {
       id: '3',
-      symbol: 'AAPL',
-      price: '178.90',
-      position: 'holding',
-      sentiment: 'bearish',
-      category: 'catalyst',
-      parentCategory: 'regulatory',
-      title: 'China Regulatory Concerns',
-      description: 'Increasing restrictions on iPhone usage in government offices. Potential broader consumer impact if tensions escalate. China represents 20% of revenue.',
-      date: '2024-09-08',
-      timestamp: '2024-09-08T09:15:00.000Z',
-      tags: ['china', 'regulatory', 'geopolitical']
-    },
-    {
-      id: '4',
-      symbol: 'AAPL',
-      price: '181.75',
-      position: 'holding',
-      sentiment: 'bearish',
-      category: 'block',
-      parentCategory: 'competitive',
-      title: 'Strong Brand Moat',
-      description: 'Ecosystem lock-in effect provides significant downside protection. High switching costs and customer loyalty. Even in bear case, unlikely to see major market share loss.',
-      date: '2024-09-12',
-      timestamp: '2024-09-12T16:45:00.000Z',
-      tags: ['moat', 'brand', 'ecosystem']
-    },
-    {
-      id: '5',
+      stockId: '2',
       symbol: 'TSLA',
-      price: '258.50',
-      position: 'watching',
       sentiment: 'bullish',
       category: 'catalyst',
       parentCategory: 'operational',
@@ -144,38 +144,9 @@ const ThoughtStockJournal = () => {
       tags: ['fsd', 'autonomous', 'subscription']
     },
     {
-      id:'6',
-      symbol: 'TSLA',
-      price: '255.30',
-      position: 'watching',
-      sentiment: 'bullish',
-      category: 'block',
-      parentCategory: 'competitive',
-      title: 'Competition Intensifying',
-      description: 'Traditional automakers ramping EV production. Ford, GM, and European makers gaining market share. Price wars could pressure margins.',
-      date: '2024-09-11',
-      timestamp: '2024-09-11T13:10:00.000Z',
-      tags: ['competition', 'ev-market', 'margins']
-    },
-    {
-      id: '7',
-      symbol: 'TSLA',
-      price: '260.80',
-      position: 'watching',
-      sentiment: 'bearish',
-      category: 'catalyst',
-      parentCategory: 'market',
-      title: 'Demand Concerns',
-      description: 'Multiple price cuts suggesting demand weakness. Inventory building up in key markets. Economic slowdown could further impact luxury EV demand.',
-      date: '2024-09-13',
-      timestamp: '2024-09-13T08:45:00.000Z',
-      tags: ['demand', 'pricing', 'inventory']
-    },
-    {
-      id: '8',
+      id: '4',
+      stockId: '3',
       symbol: 'NVDA',
-      price: '436.20',
-      position: 'holding',
       sentiment: 'bullish',
       category: 'catalyst',
       parentCategory: 'financial',
@@ -186,32 +157,16 @@ const ThoughtStockJournal = () => {
       tags: ['ai', 'datacenter', 'h100']
     },
     {
-      id: '9',
-      symbol: 'NVDA',
-      price: '430.50',
-      position: 'holding',
-      sentiment: 'bearish',
-      category: 'catalyst',
-      parentCategory: 'regulatory',
-      title: 'China Export Restrictions',
-      description: 'New semiconductor export controls limiting sales to China. Gaming GPU demand normalizing post-crypto crash. Consumer segment showing weakness.',
-      date: '2024-09-09',
-      timestamp: '2024-09-09T12:00:00.000Z',
-      tags: ['china', 'export-controls', 'gaming']
-    },
-    {
-      id: '10',
-      symbol: 'NVDA',
-      price: '438.75',
-      position: 'holding',
-      sentiment: 'bearish',
-      category: 'block',
-      parentCategory: 'competitive',
-      title: 'Switching Costs High',
-      description: 'CUDA ecosystem creates significant moat. Enterprise customers heavily invested in NVIDIA stack. AMD and Intel lack software parity despite hardware improvements.',
-      date: '2024-09-17',
-      timestamp: '2024-09-17T10:15:00.000Z',
-      tags: ['cuda', 'moat', 'software']
+      id: '5',
+      stockId: '1',
+      symbol: 'AAPL',
+      category: 'research',
+      parentCategory: 'market',
+      title: 'Competitive Landscape Analysis',
+      description: 'Samsung and Google gaining ground in premium smartphone market. However, Apple maintains strong ecosystem lock-in. Need to monitor market share trends closely.',
+      date: '2024-09-12',
+      timestamp: '2024-09-12T16:45:00.000Z',
+      tags: ['competition', 'market-share', 'ecosystem']
     }
   ];
 
@@ -230,30 +185,65 @@ const ThoughtStockJournal = () => {
     );
   }
 
-  const [entries, setEntries] = useState<Entry[]>(exampleEntries);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // State
+  const [positions, setPositions] = useState<StockPosition[]>(examplePositions);
+  const [notes, setNotes] = useState<AnalysisNote[]>(exampleNotes);
+  const [activeTab, setActiveTab] = useState('positions');
   const [selectedStock, setSelectedStock] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterBy, setFilterBy] = useState('all');
-  const [showAddEntry, setShowAddEntry] = useState(false);
+  const [showAddPosition, setShowAddPosition] = useState(false);
+  const [showAddNote, setShowAddNote] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [positionToDelete, setPositionToDelete] = useState<string | null>(null);
+  const [showNoteDetail, setShowNoteDetail] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<AnalysisNote | null>(null);
 
-  // Save entries to localStorage whenever entries change
-  useEffect(() => {
-    localStorage.setItem('stockJournalEntries', JSON.stringify(entries));
-  }, [entries]);
-
-  const [newEntry, setNewEntry] = useState<NewEntry>({
-    date: new Date().toISOString().split('T')[0],
+  const [newPosition, setNewPosition] = useState<NewStockPosition>({
     symbol: '',
     price: '',
     position: 'watching',
-    sentiment: 'bullish',
-    category: 'catalyst',
-    parentCategory: 'financial',
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  const [newNote, setNewNote] = useState<NewAnalysisNote>({
+    category: 'research',
+    parentCategory: 'general',
     title: '',
     description: '',
+    date: new Date().toISOString().split('T')[0],
     tags: ''
   });
+
+  // Load data on mount
+  useEffect(() => {
+    const savedPositions = localStorage.getItem('stockPositions');
+    const savedNotes = localStorage.getItem('analysisNotes');
+    
+    if (savedPositions) {
+      try {
+        setPositions(JSON.parse(savedPositions));
+      } catch (error) {
+        console.error('Error loading positions:', error);
+      }
+    }
+    
+    if (savedNotes) {
+      try {
+        setNotes(JSON.parse(savedNotes));
+      } catch (error) {
+        console.error('Error loading notes:', error);
+      }
+    }
+  }, []);
+
+  // Save data when changed
+  useEffect(() => {
+    localStorage.setItem('stockPositions', JSON.stringify(positions));
+  }, [positions]);
+
+  useEffect(() => {
+    localStorage.setItem('analysisNotes', JSON.stringify(notes));
+  }, [notes]);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -263,7 +253,6 @@ const ThoughtStockJournal = () => {
     })
   );
 
-
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over) return;
   
@@ -272,194 +261,269 @@ const ThoughtStockJournal = () => {
   
     if (activeId === overId) return;
   
-    setEntries((prev) => {
+    setNotes((prev) => {
       const activeIndex = prev.findIndex((e) => e.id === activeId);
+      if (activeIndex === -1) return prev;
+      
       const activeEntry = prev[activeIndex];
-      if (!activeEntry) return prev;
-  
-      let newEntries = [...prev];
+      let newNotes = [...prev];
   
       // Case 1: Dropped over a container
       if (overId.includes("-")) {
         const [newCategory, newParentCategory] = overId.split("-");
-        newEntries[activeIndex] = {
-          ...activeEntry,
-          category: newCategory as "catalyst" | "block",
-          parentCategory: newParentCategory,
-        };
-        return newEntries;
+        
+        // Handle research category specially
+        if (newCategory === "research") {
+          newNotes[activeIndex] = {
+            ...activeEntry,
+            category: "research" as "research",
+            parentCategory: "general", // Research notes don't use parent categories
+            sentiment: undefined, // Research notes don't have sentiment
+          };
+        } else {
+          newNotes[activeIndex] = {
+            ...activeEntry,
+            category: newCategory as "catalyst" | "block",
+            parentCategory: newParentCategory,
+            sentiment: activeEntry.sentiment || 'bullish', // Ensure sentiment exists for catalyst/block
+          };
+        }
+        return newNotes;
       }
   
       // Case 2: Dropped over another note
-      const overIndex = newEntries.findIndex((e) => e.id === overId);
-      const overEntry = newEntries[overIndex];
-      if (!overEntry) return prev;
+      const overIndex = newNotes.findIndex((e) => e.id === overId);
+      if (overIndex === -1) return prev;
+      
+      const overEntry = newNotes[overIndex];
   
       // Remove active entry from old spot
-      newEntries.splice(activeIndex, 1);
+      newNotes.splice(activeIndex, 1);
   
       // Insert at new spot (relative to overIndex)
       const insertAt = activeIndex < overIndex ? overIndex : overIndex + 1;
-      newEntries.splice(insertAt, 0, {
-        ...activeEntry,
-        category: overEntry.category,
-        parentCategory: overEntry.parentCategory,
-      });
+      
+      // Handle different category moves
+      const updatedEntry = { ...activeEntry };
+      if (overEntry.category === 'research') {
+        updatedEntry.category = 'research';
+        updatedEntry.parentCategory = 'general';
+        updatedEntry.sentiment = undefined;
+      } else {
+        updatedEntry.category = overEntry.category;
+        updatedEntry.parentCategory = overEntry.parentCategory;
+        updatedEntry.sentiment = activeEntry.sentiment || 'bullish';
+      }
+      
+      newNotes.splice(insertAt, 0, updatedEntry);
   
-      return newEntries;
+      return newNotes;
     });
   };
-  
 
-  
+  const handleDragOver = ({ active, over }: DragOverEvent) => {
+    if (!over) return;
 
-const handleDragOver = ({ active, over }: DragOverEvent) => {
-  if (!over) return;
+    const activeId = active.id as string;
+    const overId = over.id as string;
 
-  const activeId = active.id as string;
-  const overId = over.id as string;
+    if (activeId === overId) return;
 
-  if (activeId === overId) return;
+    setNotes((prev) => {
+      const activeIndex = prev.findIndex((e) => e.id === activeId);
+      if (activeIndex === -1) return prev;
+      
+      const activeEntry = prev[activeIndex];
 
-  setEntries((prev) => {
-    const activeIndex = prev.findIndex((e) => e.id === activeId); // ✅ no type error now
-    const activeEntry = prev[activeIndex];
-    if (!activeEntry) return prev;
+      // If hovering over a container (like "catalyst-market" or "research-general")
+      if (overId.includes("-")) {
+        const [newCategory, newParentCategory] = overId.split("-");
+        
+        // Check if already in the right place
+        if (newCategory === 'research') {
+          if (activeEntry.category === 'research') {
+            return prev;
+          }
+        } else {
+          if (
+            activeEntry.category === newCategory &&
+            activeEntry.parentCategory === newParentCategory
+          ) {
+            return prev;
+          }
+        }
 
-    // If hovering over a container (like "catalyst-market")
-    if (overId.includes("-")) {
-      const [newCategory, newParentCategory] = overId.split("-");
-      if (
-        activeEntry.category === newCategory &&
-        activeEntry.parentCategory === newParentCategory
-      ) {
-        return prev;
+        const newNotes = [...prev];
+        if (newCategory === 'research') {
+          newNotes[activeIndex] = {
+            ...activeEntry,
+            category: 'research' as 'research',
+            parentCategory: 'general',
+            sentiment: undefined,
+          };
+        } else {
+          newNotes[activeIndex] = {
+            ...activeEntry,
+            category: newCategory as "catalyst" | "block",
+            parentCategory: newParentCategory,
+            sentiment: activeEntry.sentiment || 'bullish',
+          };
+        }
+        return newNotes;
       }
 
-      const newEntries = [...prev];
-      newEntries[activeIndex] = {
-        ...activeEntry,
-        category: newCategory as "catalyst" | "block",
-        parentCategory: newParentCategory,
-      };
-      return newEntries;
-    }
+      return prev;
+    });
+  };
 
-    return prev;
-  });
-};
-
-
-
-  const addEntry = () => {
-    if (newEntry.symbol && newEntry.title && newEntry.description) {
-      const entry = {
-        ...newEntry,
+  // Add position
+  const addPosition = () => {
+    if (newPosition.symbol && newPosition.price) {
+      const position: StockPosition = {
+        ...newPosition,
         id: Date.now().toString(),
+        symbol: newPosition.symbol.toUpperCase(),
         timestamp: new Date().toISOString(),
-        tags: newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
       };
-      setEntries([entry, ...entries]);
-      setNewEntry({
-        date: new Date().toISOString().split('T')[0],
+      setPositions([position, ...positions]);
+      setNewPosition({
         symbol: '',
         price: '',
         position: 'watching',
-        sentiment: 'bullish',
-        category: 'catalyst',
-        parentCategory: 'financial',
-        title: '',
-        description: '',
-        tags: ''
+        date: new Date().toISOString().split('T')[0]
       });
-      setShowAddEntry(false);
+      setShowAddPosition(false);
     }
   };
 
-  const getStockProjects = (): StockProject[] => {
-    const stockGroups: Record<string, StockProject> = entries.reduce((acc, entry) => {
-      if (!acc[entry.symbol]) {
-        acc[entry.symbol] = {
-          symbol: entry.symbol,
-          entries: [],
-          latestPrice: null,
-          latestPosition: 'watching' as const,
-          latestDate: null
+  // Add note
+  const addNote = () => {
+    if (selectedStock && newNote.title && newNote.description) {
+      const stockPosition = positions.find(p => p.symbol === selectedStock);
+      if (stockPosition) {
+        const note: AnalysisNote = {
+          ...newNote,
+          id: Date.now().toString(),
+          stockId: stockPosition.id,
+          symbol: selectedStock,
+          timestamp: new Date().toISOString(),
+          tags: newNote.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
         };
+        setNotes([note, ...notes]);
+        setNewNote({
+          category: 'research',
+          parentCategory: 'general',
+          title: '',
+          description: '',
+          date: new Date().toISOString().split('T')[0],
+          tags: ''
+        });
+        setShowAddNote(false);
       }
-      acc[entry.symbol].entries.push(entry);
-      
-      // Update latest info
-      if (!acc[entry.symbol].latestDate || entry.date > acc[entry.symbol].latestDate) {
-        acc[entry.symbol].latestPrice = entry.price;
-        acc[entry.symbol].latestPosition = entry.position;
-        acc[entry.symbol].latestDate = entry.date;
-      }
-      
-      return acc;
-    }, {} as Record<string, StockProject>);
-
-    return Object.values(stockGroups).sort((a, b) => 
-      new Date(b.latestDate || 0).getTime() - new Date(a.latestDate || 0).getTime()
-    );
+    }
   };
 
-  const getKanbanData = (stockSymbol) => {
-    const stockEntries = entries.filter(entry => entry.symbol === stockSymbol);
-    
-    return {
-      bullishCatalysts: stockEntries.filter(e => e.sentiment === 'bullish' && e.category === 'catalyst'),
-      bullishBlocks: stockEntries.filter(e => e.sentiment === 'bullish' && e.category === 'block'),
-      bearishCatalysts: stockEntries.filter(e => e.sentiment === 'bearish' && e.category === 'catalyst'),
-      bearishBlocks: stockEntries.filter(e => e.sentiment === 'bearish' && e.category === 'block')
-    };
+  // Delete position and related notes
+  const deletePosition = (positionId: string) => {
+    setPositions(prev => prev.filter(p => p.id !== positionId));
+    setNotes(prev => prev.filter(n => n.stockId !== positionId));
+    setShowDeleteConfirm(false);
+    setPositionToDelete(null);
   };
+
+  // Handle delete confirmation
+  const handleDeleteClick = (positionId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click
+    setPositionToDelete(positionId);
+    setShowDeleteConfirm(true);
+  };
+
+  // Handle row click
+  const handleRowClick = (symbol: string) => {
+    setSelectedStock(symbol);
+    setActiveTab('analysis');
+  };
+
+  // Handle note click
+  const handleNoteClick = (note: AnalysisNote) => {
+    setSelectedNote(note);
+    setShowNoteDetail(true);
+  };
+
+  // Get stock projects for display
+  const stockProjects = useMemo(() => {
+    return positions.map(position => {
+      const stockNotes = notes.filter(note => note.stockId === position.id);
+      const catalystsCount = stockNotes.filter(n => n.category === 'catalyst').length;
+      const blockersCount = stockNotes.filter(n => n.category === 'block').length;
+      const researchCount = stockNotes.filter(n => n.category === 'research').length;
+      
+      return {
+        ...position,
+        notesCount: stockNotes.length,
+        catalystsCount,
+        blockersCount,
+        researchCount,
+        notes: stockNotes
+      };
+    });
+  }, [positions, notes]);
+
+  const filteredProjects = useMemo(() => 
+    stockProjects.filter(project =>
+      project.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+    ), [stockProjects, searchTerm]);
 
   const getPositionColor = (position: 'holding' | 'sold' | 'watching') => {
     switch (position) {
-      case 'holding': return 'bg-bullish/10 text-bullish border-bullish/20';
-      case 'sold': return 'bg-bearish/10 text-bearish border-bearish/20';
-      case 'watching': return 'bg-primary/10 text-primary border-primary/20';
-      default: return 'bg-muted text-muted-foreground border-border';
+      case 'holding': return 'bg-green-100 text-green-800 border-green-200';
+      case 'sold': return 'bg-red-100 text-red-800 border-red-200';
+      case 'watching': return 'bg-blue-100 text-blue-800 border-blue-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
-
-  const getCategoryIcon = (category) => {
-    return category === 'catalyst' ? 
-      <Zap className="w-4 h-4" /> : 
-      <AlertTriangle className="w-4 h-4" />;
-  };
-
-  const getCategoryColor = (sentiment: 'bullish' | 'bearish', category: 'catalyst' | 'block') => {
-    if (sentiment === 'bullish') {
-      return category === 'catalyst' ? 
-        'bg-bullish/10 border-bullish/20' : 
-        'bg-warning/10 border-warning/20';
-    } else {
-      return category === 'catalyst' ? 
-        'bg-bearish/10 border-bearish/20' : 
-        'bg-destructive/10 border-destructive/20';
-    }
-  };
-
-  const stockProjects = getStockProjects();
-  const filteredProjects = stockProjects.filter(project =>
-    project.symbol.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   // Sortable note component for drag and drop
-  const SortableNote = ({ entry }: { entry: Entry }) => {
+  const SortableNote = ({ note }: { note: AnalysisNote }) => {
     const {
       attributes,
       listeners,
       setNodeRef,
       transform,
       transition,
-    } = useSortable({ id: entry.id });
+    } = useSortable({ id: note.id });
 
     const style = {
       transform: CSS.Transform.toString(transform),
       transition,
+    };
+
+    // Different styling for research notes
+    const getNoteStyling = () => {
+      if (note.category === 'research') {
+        return 'bg-gray-50 border-l-gray-500 border border-gray-200';
+      }
+      return note.sentiment === 'bullish' 
+        ? 'bg-green-50 border-l-green-500 border border-green-200' 
+        : 'bg-red-50 border-l-red-500 border border-red-200';
+    };
+
+    const getSentimentIcon = () => {
+      if (note.category === 'research') {
+        return <Brain className="w-4 h-4 text-gray-600" />;
+      }
+      return note.sentiment === 'bullish' ? 
+        <TrendingUp className="w-4 h-4 text-green-600" /> : 
+        <TrendingDown className="w-4 h-4 text-red-600" />;
+    };
+
+    const getTagStyling = () => {
+      if (note.category === 'research') {
+        return 'bg-gray-100 text-gray-800';
+      }
+      return note.sentiment === 'bullish' 
+        ? 'bg-green-100 text-green-800' 
+        : 'bg-red-100 text-red-800';
     };
 
     return (
@@ -468,34 +532,23 @@ const handleDragOver = ({ active, over }: DragOverEvent) => {
         style={style}
         {...attributes}
         {...listeners}
-        className={`p-4 rounded-lg border-l-4 cursor-move ${
-          entry.sentiment === 'bullish' 
-            ? 'bg-bullish/5 border-l-bullish border border-bullish/20' 
-            : 'bg-bearish/5 border-l-bearish border border-bearish/20'
-        }`}
+        onClick={() => handleNoteClick(note)}
+        className={`p-4 rounded-lg border-l-4 cursor-pointer hover:shadow-md transition-all ${getNoteStyling()}`}
       >
         <div className="flex items-start justify-between mb-2">
-          <h4 className="font-semibold text-foreground">{entry.title}</h4>
+          <h4 className="font-semibold text-gray-900">{note.title}</h4>
           <div className="flex items-center gap-1">
-            {entry.sentiment === 'bullish' ? 
-              <TrendingUp className="w-4 h-4 text-bullish" /> : 
-              <TrendingDown className="w-4 h-4 text-bearish" />
-            }
+            {getSentimentIcon()}
           </div>
         </div>
-        <p className="text-sm text-muted-foreground mb-3">{entry.description}</p>
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-          <span>{entry.date}</span>
-          {entry.price && <span className="font-medium">${entry.price}</span>}
+        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{note.description}</p>
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+          <span>{note.date}</span>
         </div>
-        {entry.tags && entry.tags.length > 0 && (
+        {note.tags && note.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {entry.tags.slice(0, 4).map((tag, index) => (
-              <span key={index} className={`px-2 py-0.5 rounded-full text-xs ${
-                entry.sentiment === 'bullish' 
-                  ? 'bg-bullish/10 text-bullish' 
-                  : 'bg-bearish/10 text-bearish'
-              }`}>
+            {note.tags.slice(0, 4).map((tag, index) => (
+              <span key={index} className={`px-2 py-0.5 rounded-full text-xs ${getTagStyling()}`}>
                 #{tag}
               </span>
             ))}
@@ -505,84 +558,76 @@ const handleDragOver = ({ active, over }: DragOverEvent) => {
     );
   };
 
-  // Group entries by parent category
-  const groupEntriesByParentCategory = (entries: Entry[]) => {
-    return PARENT_CATEGORIES.reduce((acc, parentCat) => {
-      acc[parentCat.id] = entries.filter(entry => entry.parentCategory === parentCat.id);
-      return acc;
-    }, {} as Record<string, Entry[]>);
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-background">
+    <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2 flex items-center justify-center gap-3">
-            <Target className="w-10 h-10 text-primary" />
+          <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-3">
+            <Target className="w-10 h-10 text-blue-600" />
             Stock Analysis Board
           </h1>
-          <p className="text-muted-foreground">Project-based approach to stock analysis with bullish/bearish catalysts and blocks</p>
+          <p className="text-gray-600">Manage your stock positions and detailed analysis separately</p>
         </div>
 
         {/* Navigation */}
         <div className="flex justify-center mb-8">
-          <div className="bg-card rounded-lg p-1 shadow-financial border border-border">
+          <div className="bg-white rounded-lg p-1 shadow-lg border border-gray-200">
             <button
               onClick={() => {
-                setActiveTab('dashboard');
+                setActiveTab('positions');
                 setSelectedStock(null);
               }}
               className={`px-6 py-2 rounded-md transition-all ${
-                activeTab === 'dashboard' 
-                  ? 'bg-primary text-primary-foreground shadow-md' 
-                  : 'text-muted-foreground hover:bg-muted'
+                activeTab === 'positions' 
+                  ? 'bg-blue-600 text-white shadow-md' 
+                  : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              Stock Projects
+              Stock Positions
             </button>
             {selectedStock && (
               <button
-                onClick={() => setActiveTab('kanban')}
+                onClick={() => setActiveTab('analysis')}
                 className={`px-6 py-2 rounded-md transition-all ${
-                  activeTab === 'kanban' 
-                    ? 'bg-primary text-primary-foreground shadow-md' 
-                    : 'text-muted-foreground hover:bg-muted'
+                  activeTab === 'analysis' 
+                    ? 'bg-blue-600 text-white shadow-md' 
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                {selectedStock} Board
+                {selectedStock} Analysis
               </button>
             )}
           </div>
         </div>
 
-        {/* Stock Projects Dashboard */}
-        {activeTab === 'dashboard' && (
+        {/* Stock Positions Page */}
+        {activeTab === 'positions' && (
           <div className="space-y-6">
             {/* Search and Add */}
             <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search stock projects..."
+                  placeholder="Search stock positions..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                 />
               </div>
               
               <button
-                onClick={() => setShowAddEntry(true)}
-                className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+                onClick={() => setShowAddPosition(true)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
               >
                 <Plus className="w-5 h-5" />
-                New Analysis
+                Add Position
               </button>
             </div>
 
-            {/* Stock Projects Table */}
-            <div className="bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden">
+            {/* Positions Table */}
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
@@ -601,250 +646,289 @@ const handleDragOver = ({ active, over }: DragOverEvent) => {
                         Blockers
                       </div>
                     </th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">
+                      <div className="flex items-center justify-center gap-1">
+                        <Brain className="w-4 h-4 text-gray-600" />
+                        Research
+                      </div>
+                    </th>
                     <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">Total Notes</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Last Updated</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">Action</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Date Added</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {filteredProjects.map(project => {
-                    const totalNotes = project.entries.length;
-                    const catalystsCount = project.entries.filter(e => e.category === 'catalyst').length;
-                    const blockersCount = project.entries.filter(e => e.category === 'block').length;
-
-                    return (
-                      <tr key={project.symbol} className="hover:bg-muted/50 cursor-pointer transition-colors"
-                          onClick={() => {
-                            setSelectedStock(project.symbol);
-                            setActiveTab('kanban');
-                          }}>
-                        <td className="px-6 py-4">
-                          <span className="text-lg font-bold text-foreground">{project.symbol}</span>
-                        </td>
-                        <td className="px-6 py-4">
-                          {project.latestPrice ? (
-                            <span className="text-bullish font-semibold">${project.latestPrice}</span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPositionColor(project.latestPosition)}`}>
-                            {project.latestPosition}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="inline-flex items-center justify-center w-8 h-8 bg-primary/10 text-primary rounded-full font-bold">
-                            {catalystsCount}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="inline-flex items-center justify-center w-8 h-8 bg-warning/10 text-warning rounded-full font-bold">
-                            {blockersCount}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-muted-foreground font-medium">{totalNotes}</span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm text-muted-foreground">{project.latestDate}</span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="inline-flex items-center text-primary text-sm font-medium hover:text-primary/80">
-                            <span>View Board</span>
+                  {filteredProjects.map(project => (
+                    <tr 
+                      key={project.id} 
+                      className="hover:bg-blue-50 cursor-pointer transition-colors group"
+                      onClick={() => handleRowClick(project.symbol)}
+                    >
+                      <td className="px-6 py-4">
+                        <span className="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors">{project.symbol}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-green-600 font-semibold">${project.price}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPositionColor(project.position)}`}>
+                          {project.position}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full font-bold">
+                          {project.catalystsCount}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="inline-flex items-center justify-center w-8 h-8 bg-orange-100 text-orange-800 rounded-full font-bold">
+                          {project.blockersCount}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 text-gray-800 rounded-full font-bold">
+                          {project.researchCount}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="text-gray-600 font-medium">{project.notesCount}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-600">{project.date}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent row click
+                              setSelectedStock(project.symbol);
+                              setActiveTab('analysis');
+                            }}
+                            className="inline-flex items-center text-blue-600 text-sm font-medium hover:text-blue-800 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <span>Analyze</span>
                             <ArrowRight className="w-4 h-4 ml-1" />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteClick(project.id, e)}
+                            className="text-red-600 hover:text-red-800 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
               
               {filteredProjects.length === 0 && (
-              <div className="text-center py-12">
-                <Target className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">No stock projects yet. Start your first analysis!</p>
-                <button
-                  onClick={() => setShowAddEntry(true)}
-                  className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  Create First Analysis
-                </button>
-              </div>
+                <div className="text-center py-12">
+                  <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 mb-4">No stock positions yet. Add your first position!</p>
+                  <button
+                    onClick={() => setShowAddPosition(true)}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Add First Position
+                  </button>
+                </div>
               )}
             </div>
-
-            {filteredProjects.length === 0 && (
-              <div className="text-center py-12">
-                <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 mb-4">No stock projects yet. Start your first analysis!</p>
-                <button
-                  onClick={() => setShowAddEntry(true)}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Create First Analysis
-                </button>
-              </div>
-            )}
           </div>
         )}
 
-{/* Kanban Board */}
-{activeTab === 'kanban' && selectedStock && (
-  <DndContext
-    sensors={sensors}
-    collisionDetection={closestCorners}
-    onDragOver={handleDragOver}
-    onDragEnd={handleDragEnd}
-  >
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">{selectedStock} Analysis Board</h2>
-          <p className="text-muted-foreground">Drag notes between categories and sections</p>
-        </div>
-        <button
-          onClick={() => {
-            setNewEntry({ ...newEntry, symbol: selectedStock });
-            setShowAddEntry(true);
-          }}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Note
-        </button>
-      </div>
-
-      {/* Columns: Catalysts & Blockers */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {["catalyst", "block"].map((categoryColumn) => (
-          <div
-            key={categoryColumn}
-            className={`bg-card rounded-lg shadow-financial border border-border`}
+        {/* Analysis Board */}
+        {activeTab === 'analysis' && selectedStock && (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
           >
-            <div
-              className={`p-4 border-b border-border ${
-                categoryColumn === "catalyst" ? "bg-primary/10" : "bg-warning/10"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {categoryColumn === "catalyst" ? (
-                  <Zap className="w-5 h-5 text-primary" />
-                ) : (
-                  <AlertTriangle className="w-5 h-5 text-warning" />
-                )}
-                <h3 className="font-semibold text-foreground">
-                  {categoryColumn === "catalyst" ? "Catalysts" : "Blockers"}
-                </h3>
-                <span className={`bg-${categoryColumn === "catalyst" ? "primary" : "warning"}/20 px-2 py-1 rounded-full text-sm font-medium`}>
-                  {entries.filter(e => e.symbol === selectedStock && e.category === categoryColumn).length}
-                </span>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">{selectedStock} Analysis Board</h2>
+                  <p className="text-gray-600">Drag notes between categories and sections</p>
+                </div>
+                <button
+                  onClick={() => setShowAddNote(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Note
+                </button>
+              </div>
+
+              {/* Columns: Catalysts, Blockers & Research */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {["catalyst", "block", "research"].map((categoryColumn) => (
+                  <div
+                    key={categoryColumn}
+                    className="bg-white rounded-lg shadow-lg border border-gray-200"
+                  >
+                    <div
+                      className={`p-4 border-b border-gray-200 ${
+                        categoryColumn === "catalyst" 
+                          ? "bg-blue-50" 
+                          : categoryColumn === "block" 
+                          ? "bg-orange-50" 
+                          : "bg-gray-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {categoryColumn === "catalyst" ? (
+                          <Zap className="w-5 h-5 text-blue-600" />
+                        ) : categoryColumn === "block" ? (
+                          <AlertTriangle className="w-5 h-5 text-orange-600" />
+                        ) : (
+                          <Brain className="w-5 h-5 text-gray-600" />
+                        )}
+                        <h3 className="font-semibold text-gray-900">
+                          {categoryColumn === "catalyst" 
+                            ? "Catalysts" 
+                            : categoryColumn === "block" 
+                            ? "Blockers" 
+                            : "Research"}
+                        </h3>
+                        <span className={`${
+                          categoryColumn === "catalyst" 
+                            ? "bg-blue-100 text-blue-800" 
+                            : categoryColumn === "block" 
+                            ? "bg-orange-100 text-orange-800" 
+                            : "bg-gray-100 text-gray-800"
+                        } px-2 py-1 rounded-full text-sm font-medium`}>
+                          {notes.filter(n => n.symbol === selectedStock && n.category === categoryColumn).length}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-4 space-y-6">
+                      {/* For research, show all notes in one section */}
+                      {categoryColumn === "research" ? (
+                        <SortableContext
+                          items={notes.filter(n => n.symbol === selectedStock && n.category === "research").map(n => n.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <DroppableContainer id="research-general">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Brain className="w-4 h-4 text-gray-600" />
+                              <h4 className="font-medium text-sm text-gray-900">General Research</h4>
+                              <span className="text-xs text-gray-500">
+                                ({notes.filter(n => n.symbol === selectedStock && n.category === "research").length})
+                              </span>
+                            </div>
+
+                            <div className="space-y-3">
+                              {notes
+                                .filter(n => n.symbol === selectedStock && n.category === "research")
+                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                .map(note => (
+                                  <SortableNote key={note.id} note={note} />
+                                ))}
+
+                              {notes.filter(n => n.symbol === selectedStock && n.category === "research").length === 0 && (
+                                <div className="text-center py-4">
+                                  <p className="text-xs text-gray-500">
+                                    Drop research notes here
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </DroppableContainer>
+                        </SortableContext>
+                      ) : (
+                        /* For catalysts and blocks, maintain parent category structure */
+                        PARENT_CATEGORIES.map(parentCat => {
+                          const Icon = parentCat.icon;
+                          const categoryNotes = notes
+                            .filter(
+                              n =>
+                                n.symbol === selectedStock &&
+                                n.category === categoryColumn &&
+                                n.parentCategory === parentCat.id
+                            )
+                            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                          return (
+                            <SortableContext
+                              key={`${categoryColumn}-${parentCat.id}`}
+                              items={categoryNotes.map(n => n.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <DroppableContainer id={`${categoryColumn}-${parentCat.id}`}>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Icon className={`w-4 h-4 ${parentCat.color}`} />
+                                  <h4 className="font-medium text-sm text-gray-900">{parentCat.name}</h4>
+                                  <span className="text-xs text-gray-500">({categoryNotes.length})</span>
+                                </div>
+
+                                <div className="space-y-3">
+                                  {categoryNotes.map(note => (
+                                    <SortableNote key={note.id} note={note} />
+                                  ))}
+
+                                  {categoryNotes.length === 0 && (
+                                    <div className="text-center py-4">
+                                      <p className="text-xs text-gray-500">
+                                        Drop notes here
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </DroppableContainer>
+                            </SortableContext>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
+          </DndContext>
+        )}
 
-            <div className="p-4 space-y-6">
-              {PARENT_CATEGORIES.map(parentCat => {
-                const Icon = parentCat.icon;
-                const categoryEntries = entries
-                  .filter(
-                    e =>
-                      e.symbol === selectedStock &&
-                      e.category === categoryColumn &&
-                      e.parentCategory === parentCat.id
-                  )
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-                return (
-                  <SortableContext
-                    key={`${categoryColumn}-${parentCat.id}`}
-                    items={categoryEntries.map(e => e.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <DroppableContainer id={`${categoryColumn}-${parentCat.id}`}>
-                      <div className="flex items-center gap-2 mb-3">
-                        <Icon className={`w-4 h-4 ${parentCat.color}`} />
-                        <h4 className="font-medium text-sm text-foreground">{parentCat.name}</h4>
-                        <span className="text-xs text-muted-foreground">({categoryEntries.length})</span>
-                      </div>
-
-                      <div className="space-y-3">
-                        {categoryEntries.map(entry => (
-                          <SortableNote key={entry.id} entry={entry} />
-                        ))}
-
-                        {categoryEntries.length === 0 && (
-                          <div className="text-center py-4">
-                            <p className="text-xs text-muted-foreground">
-                              Drop notes here
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </DroppableContainer>
-                  </SortableContext>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </DndContext>
-)}
-
-
-        {/* Add Entry Modal */}
-        {showAddEntry && (
+        {/* Add Position Modal */}
+        {showAddPosition && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-card rounded-lg max-w-2xl w-full max-h-90vh overflow-y-auto border border-border shadow-financial">
-            <div className="p-6 border-b border-border">
-              <h2 className="text-xl font-bold text-foreground">New Analysis Note</h2>
+            <div className="bg-white rounded-lg max-w-md w-full border border-gray-200 shadow-lg">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">Add Stock Position</h2>
               </div>
               
               <div className="p-6 space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Stock Symbol*</label>
-                    <input
-                      type="text"
-                      value={newEntry.symbol}
-                      onChange={(e) => setNewEntry({...newEntry, symbol: e.target.value.toUpperCase()})}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
-                      placeholder="e.g., AAPL"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Current Price</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={newEntry.price}
-                      onChange={(e) => setNewEntry({...newEntry, price: e.target.value})}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
-                      placeholder="0.00"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1">Stock Symbol*</label>
+                  <input
+                    type="text"
+                    value={newPosition.symbol}
+                    onChange={(e) => setNewPosition({...newPosition, symbol: e.target.value.toUpperCase()})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    placeholder="e.g., AAPL"
+                  />
                 </div>
                 
-                <div className="grid md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1">Current Price*</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newPosition.price}
+                    onChange={(e) => setNewPosition({...newPosition, price: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    placeholder="0.00"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Date</label>
-                    <input
-                      type="date"
-                      value={newEntry.date}
-                      onChange={(e) => setNewEntry({...newEntry, date: e.target.value})}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Position</label>
+                    <label className="block text-sm font-medium text-gray-900 mb-1">Position</label>
                     <select
-                      value={newEntry.position}
-                      onChange={(e) => setNewEntry({...newEntry, position: e.target.value as 'holding' | 'sold' | 'watching'})}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
+                      value={newPosition.position}
+                      onChange={(e) => setNewPosition({...newPosition, position: e.target.value as 'holding' | 'sold' | 'watching'})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                     >
                       <option value="watching">Watching</option>
                       <option value="holding">Holding</option>
@@ -853,94 +937,329 @@ const handleDragOver = ({ active, over }: DragOverEvent) => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Sentiment*</label>
-                    <select
-                      value={newEntry.sentiment}
-                      onChange={(e) => setNewEntry({...newEntry, sentiment: e.target.value as 'bullish' | 'bearish'})}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
-                    >
-                      <option value="bullish">Bullish</option>
-                      <option value="bearish">Bearish</option>
-                    </select>
+                    <label className="block text-sm font-medium text-gray-900 mb-1">Date</label>
+                    <input
+                      type="date"
+                      value={newPosition.date}
+                      onChange={(e) => setNewPosition({...newPosition, date: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    />
                   </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Category*</label>
-                    <select
-                      value={newEntry.category}
-                      onChange={(e) => setNewEntry({...newEntry, category: e.target.value as 'catalyst' | 'block'})}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
-                    >
-                      <option value="catalyst">Catalyst (Driver)</option>
-                      <option value="block">Block (Obstacle)</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Parent Category*</label>
-                    <select
-                      value={newEntry.parentCategory}
-                      onChange={(e) => setNewEntry({...newEntry, parentCategory: e.target.value})}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
-                    >
-                      {PARENT_CATEGORIES.map(cat => {
-                        const Icon = cat.icon;
-                        return (
-                          <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Title*</label>
-                  <input
-                    type="text"
-                    value={newEntry.title}
-                    onChange={(e) => setNewEntry({...newEntry, title: e.target.value})}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
-                    placeholder="Brief title for this analysis point"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Analysis*</label>
-                  <textarea
-                    value={newEntry.description}
-                    onChange={(e) => setNewEntry({...newEntry, description: e.target.value})}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
-                    placeholder="Detailed analysis of this catalyst or block..."
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Tags</label>
-                  <input
-                    type="text"
-                    value={newEntry.tags}
-                    onChange={(e) => setNewEntry({...newEntry, tags: e.target.value})}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
-                    placeholder="earnings, tech, regulation (comma-separated)"
-                  />
                 </div>
               </div>
               
-              <div className="p-6 border-t border-border flex justify-end gap-3">
+              <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
                 <button
-                  onClick={() => setShowAddEntry(false)}
-                  className="px-4 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors"
+                  onClick={() => setShowAddPosition(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={addEntry}
-                  className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                  onClick={addPosition}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  Add Analysis
+                  Add Position
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+{showAddNote && selectedStock && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-lg">
+      <div className="p-6 border-b border-gray-200">
+        <h2 className="text-xl font-bold text-gray-900">
+          Add Analysis Note for {selectedStock}
+        </h2>
+      </div>
+
+      <div className="p-6 space-y-4">
+        <div className="grid md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Date</label>
+            <input
+              type="date"
+              value={newNote.date}
+              onChange={(e) => setNewNote({ ...newNote, date: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Category*</label>
+            <select
+              value={newNote.category}
+              onChange={(e) => {
+                const category = e.target.value as 'catalyst' | 'block' | 'research';
+                setNewNote({
+                  ...newNote,
+                  category,
+                  sentiment: category === 'research' ? undefined : (newNote.sentiment || 'bullish'),
+                  parentCategory: category === 'research' ? 'general' : newNote.parentCategory,
+                });
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+            >
+              <option value="catalyst">Catalyst (Driver)</option>
+              <option value="block">Block (Obstacle)</option>
+              <option value="research">Research Note</option>
+            </select>
+          </div>
+
+          {newNote.category !== 'research' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Sentiment*</label>
+              <select
+                value={newNote.sentiment || 'bullish'}
+                onChange={(e) => setNewNote({ ...newNote, sentiment: e.target.value as 'bullish' | 'bearish' })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+              >
+                <option value="bullish">Bullish</option>
+                <option value="bearish">Bearish</option>
+              </select>
+            </div>
+          )}
+        </div>
+
+        {newNote.category !== 'research' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Parent Category*</label>
+            <select
+              value={newNote.parentCategory}
+              onChange={(e) => setNewNote({ ...newNote, parentCategory: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+            >
+              {PARENT_CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-900 mb-1">Title*</label>
+          <input
+            type="text"
+            value={newNote.title}
+            onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+            placeholder="Brief title for this analysis point"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-900 mb-1">Analysis*</label>
+          <textarea
+            value={newNote.description}
+            onChange={(e) => setNewNote({ ...newNote, description: e.target.value })}
+            rows={4}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+            placeholder="Detailed analysis of this catalyst or block..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-900 mb-1">Tags</label>
+          <input
+            type="text"
+            value={newNote.tags}
+            onChange={(e) => setNewNote({ ...newNote, tags: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+            placeholder="earnings, tech, regulation (comma-separated)"
+          />
+        </div>
+      </div>
+
+      <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+        <button
+          onClick={() => setShowAddNote(false)}
+          className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={addNote}
+          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Add Note
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+        {/* Note Detail Modal */}
+        {showNoteDetail && selectedNote && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-90vh overflow-y-auto border border-gray-200 shadow-lg">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">{selectedNote.title}</h2>
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        {selectedNote.date}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        {selectedNote.category === 'research' ? (
+                          <>
+                            <Brain className="w-4 h-4" />
+                            Research
+                          </>
+                        ) : selectedNote.category === 'catalyst' ? (
+                          <>
+                            <Zap className="w-4 h-4" />
+                            Catalyst
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle className="w-4 h-4" />
+                            Block
+                          </>
+                        )}
+                      </span>
+                      {selectedNote.sentiment && (
+                        <span className={`flex items-center gap-1 ${
+                          selectedNote.sentiment === 'bullish' ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {selectedNote.sentiment === 'bullish' ? (
+                            <TrendingUp className="w-4 h-4" />
+                          ) : (
+                            <TrendingDown className="w-4 h-4" />
+                          )}
+                          {selectedNote.sentiment}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowNoteDetail(false);
+                      setSelectedNote(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">Analysis</h3>
+                  <div className="prose prose-gray max-w-none">
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{selectedNote.description}</p>
+                  </div>
+                </div>
+
+                {selectedNote.tags && selectedNote.tags.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-3">Tags</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedNote.tags.map((tag, index) => (
+                        <span key={index} className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          selectedNote.category === 'research' 
+                            ? 'bg-gray-100 text-gray-800' 
+                            : selectedNote.sentiment === 'bullish' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedNote.parentCategory && selectedNote.parentCategory !== 'general' && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-3">Category</h3>
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const parentCat = PARENT_CATEGORIES.find(cat => cat.id === selectedNote.parentCategory);
+                        if (parentCat) {
+                          const Icon = parentCat.icon;
+                          return (
+                            <>
+                              <Icon className={`w-5 h-5 ${parentCat.color}`} />
+                              <span className="text-gray-700">{parentCat.name}</span>
+                            </>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-xs text-gray-500 border-t border-gray-200 pt-4">
+                  <span>Stock: {selectedNote.symbol}</span>
+                  <span className="mx-2">•</span>
+                  <span>Created: {new Date(selectedNote.timestamp).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && positionToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full border border-gray-200 shadow-lg">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">Confirm Deletion</h2>
+              </div>
+              
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-gray-900 font-medium">Delete this stock position?</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      This will permanently delete the position and all related analysis notes. This action cannot be undone.
+                    </p>
+                  </div>
+                </div>
+                
+                {(() => {
+                  const project = stockProjects.find(p => p.id === positionToDelete);
+                  return project ? (
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-gray-900">{project.symbol}</span>
+                        <span className="text-sm text-gray-600">{project.notesCount} notes will be deleted</span>
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+              
+              <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setPositionToDelete(null);
+                  }}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deletePosition(positionToDelete)}
+                  className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Delete Position
                 </button>
               </div>
             </div>
