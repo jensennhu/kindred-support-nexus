@@ -3,11 +3,13 @@ import { Plus, TrendingUp, TrendingDown, AlertTriangle, Zap, Search, Filter, Edi
 import {
   DndContext,
   closestCenter,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -19,10 +21,11 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useDroppable } from "@dnd-kit/core";
 
 // Type definitions
 interface Entry {
-  id: number;
+  id: string;
   symbol: string;
   price: string;
   position: 'holding' | 'sold' | 'watching';
@@ -71,7 +74,7 @@ const ThoughtStockJournal = () => {
   // Initialize with example data
   const exampleEntries: Entry[] = [
     {
-      id: 1,
+      id: '1',
       symbol: 'AAPL',
       price: '182.50',
       position: 'holding',
@@ -85,7 +88,7 @@ const ThoughtStockJournal = () => {
       tags: ['product-launch', 'earnings', 'premium']
     },
     {
-      id: 2,
+      id: '2',
       symbol: 'AAPL',
       price: '180.25',
       position: 'holding',
@@ -99,7 +102,7 @@ const ThoughtStockJournal = () => {
       tags: ['valuation', 'multiple-expansion']
     },
     {
-      id: 3,
+      id: '3',
       symbol: 'AAPL',
       price: '178.90',
       position: 'holding',
@@ -113,7 +116,7 @@ const ThoughtStockJournal = () => {
       tags: ['china', 'regulatory', 'geopolitical']
     },
     {
-      id: 4,
+      id: '4',
       symbol: 'AAPL',
       price: '181.75',
       position: 'holding',
@@ -127,7 +130,7 @@ const ThoughtStockJournal = () => {
       tags: ['moat', 'brand', 'ecosystem']
     },
     {
-      id: 5,
+      id: '5',
       symbol: 'TSLA',
       price: '258.50',
       position: 'watching',
@@ -141,7 +144,7 @@ const ThoughtStockJournal = () => {
       tags: ['fsd', 'autonomous', 'subscription']
     },
     {
-      id: 6,
+      id:'6',
       symbol: 'TSLA',
       price: '255.30',
       position: 'watching',
@@ -155,7 +158,7 @@ const ThoughtStockJournal = () => {
       tags: ['competition', 'ev-market', 'margins']
     },
     {
-      id: 7,
+      id: '7',
       symbol: 'TSLA',
       price: '260.80',
       position: 'watching',
@@ -169,7 +172,7 @@ const ThoughtStockJournal = () => {
       tags: ['demand', 'pricing', 'inventory']
     },
     {
-      id: 8,
+      id: '8',
       symbol: 'NVDA',
       price: '436.20',
       position: 'holding',
@@ -183,7 +186,7 @@ const ThoughtStockJournal = () => {
       tags: ['ai', 'datacenter', 'h100']
     },
     {
-      id: 9,
+      id: '9',
       symbol: 'NVDA',
       price: '430.50',
       position: 'holding',
@@ -197,7 +200,7 @@ const ThoughtStockJournal = () => {
       tags: ['china', 'export-controls', 'gaming']
     },
     {
-      id: 10,
+      id: '10',
       symbol: 'NVDA',
       price: '438.75',
       position: 'holding',
@@ -211,6 +214,21 @@ const ThoughtStockJournal = () => {
       tags: ['cuda', 'moat', 'software']
     }
   ];
+
+  function DroppableContainer({ id, children }: { id: string; children: React.ReactNode }) {
+    const { setNodeRef, isOver } = useDroppable({ id });
+  
+    return (
+      <div
+        ref={setNodeRef}
+        className={`min-h-[100px] p-2 rounded-lg border ${
+          isOver ? "bg-blue-50 border-blue-400" : "bg-gray-50 border-gray-200"
+        }`}
+      >
+        {children}
+      </div>
+    );
+  }
 
   const [entries, setEntries] = useState<Entry[]>(exampleEntries);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -245,37 +263,99 @@ const ThoughtStockJournal = () => {
     })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
 
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over) return;
-
-    const activeId = active.id as number;
+  
+    const activeId = active.id as string;
     const overId = over.id as string;
-
-    // Extract parent category from over id (format: "category-parentCategory")
-    const [newCategory, newParentCategory] = overId.split('-');
-
-    if (newCategory && newParentCategory) {
-      setEntries(entries => 
-        entries.map(entry => 
-          entry.id === activeId 
-            ? { 
-                ...entry, 
-                category: newCategory as 'catalyst' | 'block',
-                parentCategory: newParentCategory 
-              }
-            : entry
-        )
-      );
-    }
+  
+    if (activeId === overId) return;
+  
+    setEntries((prev) => {
+      const activeIndex = prev.findIndex((e) => e.id === activeId);
+      const activeEntry = prev[activeIndex];
+      if (!activeEntry) return prev;
+  
+      let newEntries = [...prev];
+  
+      // Case 1: Dropped over a container
+      if (overId.includes("-")) {
+        const [newCategory, newParentCategory] = overId.split("-");
+        newEntries[activeIndex] = {
+          ...activeEntry,
+          category: newCategory as "catalyst" | "block",
+          parentCategory: newParentCategory,
+        };
+        return newEntries;
+      }
+  
+      // Case 2: Dropped over another note
+      const overIndex = newEntries.findIndex((e) => e.id === overId);
+      const overEntry = newEntries[overIndex];
+      if (!overEntry) return prev;
+  
+      // Remove active entry from old spot
+      newEntries.splice(activeIndex, 1);
+  
+      // Insert at new spot (relative to overIndex)
+      const insertAt = activeIndex < overIndex ? overIndex : overIndex + 1;
+      newEntries.splice(insertAt, 0, {
+        ...activeEntry,
+        category: overEntry.category,
+        parentCategory: overEntry.parentCategory,
+      });
+  
+      return newEntries;
+    });
   };
+  
+
+  
+
+const handleDragOver = ({ active, over }: DragOverEvent) => {
+  if (!over) return;
+
+  const activeId = active.id as string;
+  const overId = over.id as string;
+
+  if (activeId === overId) return;
+
+  setEntries((prev) => {
+    const activeIndex = prev.findIndex((e) => e.id === activeId); // ✅ no type error now
+    const activeEntry = prev[activeIndex];
+    if (!activeEntry) return prev;
+
+    // If hovering over a container (like "catalyst-market")
+    if (overId.includes("-")) {
+      const [newCategory, newParentCategory] = overId.split("-");
+      if (
+        activeEntry.category === newCategory &&
+        activeEntry.parentCategory === newParentCategory
+      ) {
+        return prev;
+      }
+
+      const newEntries = [...prev];
+      newEntries[activeIndex] = {
+        ...activeEntry,
+        category: newCategory as "catalyst" | "block",
+        parentCategory: newParentCategory,
+      };
+      return newEntries;
+    }
+
+    return prev;
+  });
+};
+
+
 
   const addEntry = () => {
     if (newEntry.symbol && newEntry.title && newEntry.description) {
       const entry = {
         ...newEntry,
-        id: Date.now(),
+        id: Date.now().toString(),
         timestamp: new Date().toISOString(),
         tags: newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
       };
@@ -610,138 +690,109 @@ const ThoughtStockJournal = () => {
           </div>
         )}
 
-        {/* Kanban Board */}
-        {activeTab === 'kanban' && selectedStock && (
-          <DndContext 
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
+{/* Kanban Board */}
+{activeTab === 'kanban' && selectedStock && (
+  <DndContext
+    sensors={sensors}
+    collisionDetection={closestCorners}
+    onDragOver={handleDragOver}
+    onDragEnd={handleDragEnd}
+  >
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">{selectedStock} Analysis Board</h2>
+          <p className="text-muted-foreground">Drag notes between categories and sections</p>
+        </div>
+        <button
+          onClick={() => {
+            setNewEntry({ ...newEntry, symbol: selectedStock });
+            setShowAddEntry(true);
+          }}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add Note
+        </button>
+      </div>
+
+      {/* Columns: Catalysts & Blockers */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {["catalyst", "block"].map((categoryColumn) => (
+          <div
+            key={categoryColumn}
+            className={`bg-card rounded-lg shadow-financial border border-border`}
           >
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-foreground">{selectedStock} Analysis Board</h2>
-                  <p className="text-muted-foreground">Drag notes between categories and sections</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setNewEntry({...newEntry, symbol: selectedStock});
-                    setShowAddEntry(true);
-                  }}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Note
-                </button>
-              </div>
-
-              {/* Categorized Kanban Board - Two Main Columns */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Catalysts Column */}
-                <div className="bg-card rounded-lg shadow-financial border border-border">
-                  <div className="p-4 border-b border-border bg-primary/10">
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold text-foreground">Catalysts</h3>
-                      <span className="bg-primary/20 text-primary px-2 py-1 rounded-full text-sm font-medium">
-                        {entries.filter(e => e.symbol === selectedStock && e.category === 'catalyst').length}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">Factors that could move the stock</p>
-                  </div>
-                  <div className="p-4 space-y-6">
-                    {PARENT_CATEGORIES.map(parentCat => {
-                      const Icon = parentCat.icon;
-                      const categoryEntries = entries
-                        .filter(e => e.symbol === selectedStock && e.category === 'catalyst' && e.parentCategory === parentCat.id)
-                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-                      return (
-                        <SortableContext 
-                          key={`catalyst-${parentCat.id}`}
-                          items={categoryEntries.map(e => e.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div 
-                            id={`catalyst-${parentCat.id}`}
-                            className="min-h-[100px] p-3 rounded-lg border-2 border-dashed border-border bg-muted/30 transition-colors hover:border-primary/50"
-                          >
-                            <div className="flex items-center gap-2 mb-3">
-                              <Icon className={`w-4 h-4 ${parentCat.color}`} />
-                              <h4 className="font-medium text-sm text-foreground">{parentCat.name}</h4>
-                              <span className="text-xs text-muted-foreground">({categoryEntries.length})</span>
-                            </div>
-                            <div className="space-y-3">
-                              {categoryEntries.map(entry => (
-                                <SortableNote key={entry.id} entry={entry} />
-                              ))}
-                              {categoryEntries.length === 0 && (
-                                <div className="text-center py-4">
-                                  <p className="text-xs text-muted-foreground">Drop catalyst notes here</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </SortableContext>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Blockers Column */}
-                <div className="bg-card rounded-lg shadow-financial border border-border">
-                  <div className="p-4 border-b border-border bg-warning/10">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="w-5 h-5 text-warning" />
-                      <h3 className="font-semibold text-foreground">Blockers</h3>
-                      <span className="bg-warning/20 text-warning px-2 py-1 rounded-full text-sm font-medium">
-                        {entries.filter(e => e.symbol === selectedStock && e.category === 'block').length}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">Obstacles preventing movement</p>
-                  </div>
-                  <div className="p-4 space-y-6">
-                    {PARENT_CATEGORIES.map(parentCat => {
-                      const Icon = parentCat.icon;
-                      const categoryEntries = entries
-                        .filter(e => e.symbol === selectedStock && e.category === 'block' && e.parentCategory === parentCat.id)
-                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-                      return (
-                        <SortableContext 
-                          key={`block-${parentCat.id}`}
-                          items={categoryEntries.map(e => e.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div 
-                            id={`block-${parentCat.id}`}
-                            className="min-h-[100px] p-3 rounded-lg border-2 border-dashed border-border bg-muted/30 transition-colors hover:border-warning/50"
-                          >
-                            <div className="flex items-center gap-2 mb-3">
-                              <Icon className={`w-4 h-4 ${parentCat.color}`} />
-                              <h4 className="font-medium text-sm text-foreground">{parentCat.name}</h4>
-                              <span className="text-xs text-muted-foreground">({categoryEntries.length})</span>
-                            </div>
-                            <div className="space-y-3">
-                              {categoryEntries.map(entry => (
-                                <SortableNote key={entry.id} entry={entry} />
-                              ))}
-                              {categoryEntries.length === 0 && (
-                                <div className="text-center py-4">
-                                  <p className="text-xs text-muted-foreground">Drop blocker notes here</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </SortableContext>
-                      );
-                    })}
-                  </div>
-                </div>
+            <div
+              className={`p-4 border-b border-border ${
+                categoryColumn === "catalyst" ? "bg-primary/10" : "bg-warning/10"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {categoryColumn === "catalyst" ? (
+                  <Zap className="w-5 h-5 text-primary" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-warning" />
+                )}
+                <h3 className="font-semibold text-foreground">
+                  {categoryColumn === "catalyst" ? "Catalysts" : "Blockers"}
+                </h3>
+                <span className={`bg-${categoryColumn === "catalyst" ? "primary" : "warning"}/20 px-2 py-1 rounded-full text-sm font-medium`}>
+                  {entries.filter(e => e.symbol === selectedStock && e.category === categoryColumn).length}
+                </span>
               </div>
             </div>
-          </DndContext>
-        )}
+
+            <div className="p-4 space-y-6">
+              {PARENT_CATEGORIES.map(parentCat => {
+                const Icon = parentCat.icon;
+                const categoryEntries = entries
+                  .filter(
+                    e =>
+                      e.symbol === selectedStock &&
+                      e.category === categoryColumn &&
+                      e.parentCategory === parentCat.id
+                  )
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                return (
+                  <SortableContext
+                    key={`${categoryColumn}-${parentCat.id}`}
+                    items={categoryEntries.map(e => e.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <DroppableContainer id={`${categoryColumn}-${parentCat.id}`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Icon className={`w-4 h-4 ${parentCat.color}`} />
+                        <h4 className="font-medium text-sm text-foreground">{parentCat.name}</h4>
+                        <span className="text-xs text-muted-foreground">({categoryEntries.length})</span>
+                      </div>
+
+                      <div className="space-y-3">
+                        {categoryEntries.map(entry => (
+                          <SortableNote key={entry.id} entry={entry} />
+                        ))}
+
+                        {categoryEntries.length === 0 && (
+                          <div className="text-center py-4">
+                            <p className="text-xs text-muted-foreground">
+                              Drop notes here
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </DroppableContainer>
+                  </SortableContext>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </DndContext>
+)}
+
 
         {/* Add Entry Modal */}
         {showAddEntry && (
