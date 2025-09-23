@@ -267,28 +267,34 @@ const ThoughtStockJournal = () => {
     setNotes((prev) => {
       const activeIndex = prev.findIndex((e) => e.id === activeId);
       if (activeIndex === -1) return prev;
-      
+  
       const activeEntry = prev[activeIndex];
       let newNotes = [...prev];
   
       // Case 1: Dropped over a container
       if (overId.includes("-")) {
         const [newCategory, newParentCategory] = overId.split("-");
-        
-        // Handle research category specially
+  
         if (newCategory === "research") {
           newNotes[activeIndex] = {
             ...activeEntry,
-            category: "research" as "research",
-            parentCategory: "general", // Research notes don't use parent categories
-            sentiment: undefined, // Research notes don't have sentiment
+            category: "research",
+            parentCategory: "general",
+            sentiment: undefined,
           };
-        } else {
+        } else if (newCategory === "catalyst") {
           newNotes[activeIndex] = {
             ...activeEntry,
-            category: newCategory as "catalyst" | "block",
+            category: "catalyst",
             parentCategory: newParentCategory,
-            sentiment: activeEntry.sentiment || 'bullish', // Ensure sentiment exists for catalyst/block
+            sentiment: "bullish",
+          };
+        } else if (newCategory === "block") {
+          newNotes[activeIndex] = {
+            ...activeEntry,
+            category: "block",
+            parentCategory: newParentCategory,
+            sentiment: "bearish",
           };
         }
         return newNotes;
@@ -297,88 +303,79 @@ const ThoughtStockJournal = () => {
       // Case 2: Dropped over another note
       const overIndex = newNotes.findIndex((e) => e.id === overId);
       if (overIndex === -1) return prev;
-      
+  
       const overEntry = newNotes[overIndex];
-  
-      // Remove active entry from old spot
       newNotes.splice(activeIndex, 1);
-  
-      // Insert at new spot (relative to overIndex)
       const insertAt = activeIndex < overIndex ? overIndex : overIndex + 1;
-      
-      // Handle different category moves
-      const updatedEntry = { ...activeEntry };
-      if (overEntry.category === 'research') {
-        updatedEntry.category = 'research';
-        updatedEntry.parentCategory = 'general';
-        updatedEntry.sentiment = undefined;
-      } else {
-        updatedEntry.category = overEntry.category;
-        updatedEntry.parentCategory = overEntry.parentCategory;
-        updatedEntry.sentiment = activeEntry.sentiment || 'bullish';
-      }
-      
-      newNotes.splice(insertAt, 0, updatedEntry);
   
+      const updatedEntry = { ...activeEntry };
+      if (overEntry.category === "research") {
+        updatedEntry.category = "research";
+        updatedEntry.parentCategory = "general";
+        updatedEntry.sentiment = undefined;
+      } else if (overEntry.category === "catalyst") {
+        updatedEntry.category = "catalyst";
+        updatedEntry.parentCategory = overEntry.parentCategory;
+        updatedEntry.sentiment = "bullish";
+      } else if (overEntry.category === "block") {
+        updatedEntry.category = "block";
+        updatedEntry.parentCategory = overEntry.parentCategory;
+        updatedEntry.sentiment = "bearish";
+      }
+  
+      newNotes.splice(insertAt, 0, updatedEntry);
       return newNotes;
     });
   };
+  
 
   const handleDragOver = ({ active, over }: DragOverEvent) => {
     if (!over) return;
-
+  
     const activeId = active.id as string;
     const overId = over.id as string;
-
+  
     if (activeId === overId) return;
-
+  
     setNotes((prev) => {
       const activeIndex = prev.findIndex((e) => e.id === activeId);
       if (activeIndex === -1) return prev;
-      
+  
       const activeEntry = prev[activeIndex];
-
-      // If hovering over a container (like "catalyst-market" or "research-general")
+      const newNotes = [...prev];
+  
       if (overId.includes("-")) {
         const [newCategory, newParentCategory] = overId.split("-");
-        
-        // Check if already in the right place
-        if (newCategory === 'research') {
-          if (activeEntry.category === 'research') {
-            return prev;
-          }
-        } else {
-          if (
-            activeEntry.category === newCategory &&
-            activeEntry.parentCategory === newParentCategory
-          ) {
-            return prev;
-          }
-        }
-
-        const newNotes = [...prev];
-        if (newCategory === 'research') {
+  
+        if (newCategory === "research") {
           newNotes[activeIndex] = {
             ...activeEntry,
-            category: 'research' as 'research',
-            parentCategory: 'general',
+            category: "research",
+            parentCategory: "general",
             sentiment: undefined,
           };
-        } else {
+        } else if (newCategory === "catalyst") {
           newNotes[activeIndex] = {
             ...activeEntry,
-            category: newCategory as "catalyst" | "block",
+            category: "catalyst",
             parentCategory: newParentCategory,
-            sentiment: activeEntry.sentiment || 'bullish',
+            sentiment: "bullish",
+          };
+        } else if (newCategory === "block") {
+          newNotes[activeIndex] = {
+            ...activeEntry,
+            category: "block",
+            parentCategory: newParentCategory,
+            sentiment: "bearish",
           };
         }
         return newNotes;
       }
-
+  
       return prev;
     });
   };
-
+  
   // Add position
   const addPosition = () => {
     if (newPosition.symbol && newPosition.price) {
