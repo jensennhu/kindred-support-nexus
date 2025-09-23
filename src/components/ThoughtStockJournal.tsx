@@ -197,6 +197,9 @@ const ThoughtStockJournal = () => {
   const [positionToDelete, setPositionToDelete] = useState<string | null>(null);
   const [showNoteDetail, setShowNoteDetail] = useState(false);
   const [selectedNote, setSelectedNote] = useState<AnalysisNote | null>(null);
+  const [showEditNote, setShowEditNote] = useState(false);
+  const [noteToEdit, setNoteToEdit] = useState<AnalysisNote | null>(null);
+
 
   const [newPosition, setNewPosition] = useState<NewStockPosition>({
     symbol: '',
@@ -450,6 +453,17 @@ const ThoughtStockJournal = () => {
     setShowNoteDetail(true);
   };
 
+  const handleEditNote = (note: AnalysisNote) => {
+    setNoteToEdit(note);
+    setShowEditNote(true);
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    setNotes(prev => prev.filter(n => n.id !== noteId));
+    setShowNoteDetail(false);
+    setSelectedNote(null);
+  };
+
   // Get stock projects for display
   const stockProjects = useMemo(() => {
     return positions.map(position => {
@@ -532,7 +546,7 @@ const ThoughtStockJournal = () => {
         style={style}
         {...attributes}
         {...listeners}
-        onClick={() => handleNoteClick(note)}
+        onDoubleClick={() => handleNoteClick(note)}
         className={`p-4 rounded-lg border-l-4 cursor-pointer hover:shadow-md transition-all ${getNoteStyling()}`}
       >
         <div className="flex items-start justify-between mb-2">
@@ -1102,6 +1116,7 @@ const ThoughtStockJournal = () => {
                   <div>
                     <h2 className="text-xl font-bold text-gray-900 mb-2">{selectedNote.title}</h2>
                     <div className="flex items-center gap-4 text-sm text-gray-600">
+                      
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         {selectedNote.date}
@@ -1136,8 +1151,10 @@ const ThoughtStockJournal = () => {
                           {selectedNote.sentiment}
                         </span>
                       )}
+                      
                     </div>
                   </div>
+                  
                   <button
                     onClick={() => {
                       setShowNoteDetail(false);
@@ -1208,7 +1225,35 @@ const ThoughtStockJournal = () => {
                 </div>
               </div>
             </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+  <button
+    onClick={() => {
+      setShowNoteDetail(false);
+      setSelectedNote(null);
+    }}
+    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+  >
+    Close
+  </button>
+  <button
+    onClick={() => {
+      setNoteToEdit(selectedNote);
+      setShowEditNote(true);
+    }}
+    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+  >
+    Edit
+  </button>
+  <button
+    onClick={() => handleDeleteNote(selectedNote.id)}
+    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+  >
+    Delete
+  </button>
+</div>
+
           </div>
+          
         )}
 
         {/* Delete Confirmation Modal */}
