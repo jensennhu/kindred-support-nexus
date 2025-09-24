@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, TrendingUp, TrendingDown, AlertTriangle, Zap, Search, Filter, Edit3, DollarSign, Brain, Target, ArrowRight, Calendar, Building2, Users, TrendingUpDown, Globe, Gavel, Wrench, Trash2 } from 'lucide-react';
+import { useStockPositions, StockPosition, NewStockPosition } from '@/hooks/useStockPositions';
+import { useAnalysisNotes, AnalysisNote, NewAnalysisNote } from '@/hooks/useAnalysisNotes';
 import {
   DndContext,
   closestCenter,
@@ -23,48 +25,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useDroppable } from "@dnd-kit/core";
 
-// Type definitions
-interface StockPosition {
-  id: string;
-  symbol: string;
-  price: string;
-  position: 'holding' | 'sold' | 'watching';
-  date: string;
-  timestamp: string;
-}
-
-interface AnalysisNote {
-  id: string;
-  stockId: string; // References StockPosition.id
-  symbol: string;  // Denormalized for easy filtering
-  sentiment?: 'bullish' | 'bearish'; // Optional for research notes
-  category: 'catalyst' | 'block' | 'research';
-  parentCategory: string;
-  title: string;
-  description: string;
-  date: string;
-  timestamp: string;
-  tags: string[];
-}
-
-interface NewStockPosition {
-  symbol: string;
-  price: string;
-  position: 'holding' | 'sold' | 'watching';
-  date: string;
-}
-
-interface NewAnalysisNote {
-  sentiment?: 'bullish' | 'bearish'; // Optional for research notes
-  category: 'catalyst' | 'block' | 'research';
-  parentCategory: string;
-  title: string;
-  description: string;
-  date: string;
-  tags: string;
-}
-
 // Parent categories for organizing notes
+
 const PARENT_CATEGORIES = [
   { id: 'financial', name: 'Financial', icon: DollarSign, color: 'text-emerald-600' },
   { id: 'management', name: 'Management', icon: Users, color: 'text-blue-600' },
@@ -75,100 +37,9 @@ const PARENT_CATEGORIES = [
 ];
 
 const ThoughtStockJournal = () => {
-  // Example data
-  const examplePositions: StockPosition[] = [
-    {
-      id: '1',
-      symbol: 'AAPL',
-      price: '182.50',
-      position: 'holding',
-      date: '2024-09-15',
-      timestamp: '2024-09-15T10:00:00.000Z',
-    },
-    {
-      id: '2',
-      symbol: 'TSLA',
-      price: '258.50',
-      position: 'watching',
-      date: '2024-09-14',
-      timestamp: '2024-09-14T11:20:00.000Z',
-    },
-    {
-      id: '3',
-      symbol: 'NVDA',
-      price: '436.20',
-      position: 'holding',
-      date: '2024-09-16',
-      timestamp: '2024-09-16T15:30:00.000Z',
-    }
-  ];
-
-  const exampleNotes: AnalysisNote[] = [
-    {
-      id: '1',
-      stockId: '1',
-      symbol: 'AAPL',
-      sentiment: 'bullish',
-      category: 'catalyst',
-      parentCategory: 'financial',
-      title: 'iPhone 15 Launch Success',
-      description: 'Strong pre-order numbers and positive reviews for iPhone 15 Pro. New titanium design and improved camera system driving premium mix. Expect strong Q4 earnings.',
-      date: '2024-09-15',
-      timestamp: '2024-09-15T10:00:00.000Z',
-      tags: ['product-launch', 'earnings', 'premium']
-    },
-    {
-      id: '2',
-      stockId: '1',
-      symbol: 'AAPL',
-      sentiment: 'bullish',
-      category: 'block',
-      parentCategory: 'market',
-      title: 'High Valuation Multiple',
-      description: 'Trading at 28x P/E vs historical average of 20x. Valuation stretched relative to growth prospects. May limit upside potential in near term.',
-      date: '2024-09-10',
-      timestamp: '2024-09-10T14:30:00.000Z',
-      tags: ['valuation', 'multiple-expansion']
-    },
-    {
-      id: '3',
-      stockId: '2',
-      symbol: 'TSLA',
-      sentiment: 'bullish',
-      category: 'catalyst',
-      parentCategory: 'operational',
-      title: 'FSD Beta Expansion',
-      description: 'Full Self-Driving beta showing significant improvements. Potential for subscription revenue model to drive margins. Robotaxi opportunity could be massive.',
-      date: '2024-09-14',
-      timestamp: '2024-09-14T11:20:00.000Z',
-      tags: ['fsd', 'autonomous', 'subscription']
-    },
-    {
-      id: '4',
-      stockId: '3',
-      symbol: 'NVDA',
-      sentiment: 'bullish',
-      category: 'catalyst',
-      parentCategory: 'financial',
-      title: 'AI Chip Demand Surge',
-      description: 'Data center revenue up 171% YoY driven by AI workloads. H100 chips supply-constrained with massive backlog. Cloud providers building out AI infrastructure.',
-      date: '2024-09-16',
-      timestamp: '2024-09-16T15:30:00.000Z',
-      tags: ['ai', 'datacenter', 'h100']
-    },
-    {
-      id: '5',
-      stockId: '1',
-      symbol: 'AAPL',
-      category: 'research',
-      parentCategory: 'market',
-      title: 'Competitive Landscape Analysis',
-      description: 'Samsung and Google gaining ground in premium smartphone market. However, Apple maintains strong ecosystem lock-in. Need to monitor market share trends closely.',
-      date: '2024-09-12',
-      timestamp: '2024-09-12T16:45:00.000Z',
-      tags: ['competition', 'market-share', 'ecosystem']
-    }
-  ];
+  // Use hooks for data
+  const { positions, loading: positionsLoading, addPosition: addStockPosition, deletePosition: deleteStockPosition } = useStockPositions();
+  const { notes, loading: notesLoading, addNote, updateNote, deleteNote, deleteNotesByStock } = useAnalysisNotes();
 
   function DroppableContainer({ id, children }: { id: string; children: React.ReactNode }) {
     const { setNodeRef, isOver } = useDroppable({ id });
@@ -186,8 +57,6 @@ const ThoughtStockJournal = () => {
   }
 
   // State
-  const [positions, setPositions] = useState<StockPosition[]>(examplePositions);
-  const [notes, setNotes] = useState<AnalysisNote[]>(exampleNotes);
   const [activeTab, setActiveTab] = useState('positions');
   const [selectedStock, setSelectedStock] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -217,36 +86,6 @@ const ThoughtStockJournal = () => {
     tags: ''
   });
 
-  // Load data on mount
-  useEffect(() => {
-    const savedPositions = localStorage.getItem('stockPositions');
-    const savedNotes = localStorage.getItem('analysisNotes');
-    
-    if (savedPositions) {
-      try {
-        setPositions(JSON.parse(savedPositions));
-      } catch (error) {
-        console.error('Error loading positions:', error);
-      }
-    }
-    
-    if (savedNotes) {
-      try {
-        setNotes(JSON.parse(savedNotes));
-      } catch (error) {
-        console.error('Error loading notes:', error);
-      }
-    }
-  }, []);
-
-  // Save data when changed
-  useEffect(() => {
-    localStorage.setItem('stockPositions', JSON.stringify(positions));
-  }, [positions]);
-
-  useEffect(() => {
-    localStorage.setItem('analysisNotes', JSON.stringify(notes));
-  }, [notes]);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -264,171 +103,95 @@ const ThoughtStockJournal = () => {
   
     if (activeId === overId) return;
   
-    setNotes((prev) => {
-      const activeIndex = prev.findIndex((e) => e.id === activeId);
-      if (activeIndex === -1) return prev;
-  
-      const activeEntry = prev[activeIndex];
-      let newNotes = [...prev];
-  
-      // Case 1: Dropped over a container
-      if (overId.includes("-")) {
-        const [newCategory, newParentCategory] = overId.split("-");
-  
-        if (newCategory === "research") {
-          newNotes[activeIndex] = {
-            ...activeEntry,
-            category: "research",
-            parentCategory: "general",
-            sentiment: undefined,
-          };
-        } else if (newCategory === "catalyst") {
-          newNotes[activeIndex] = {
-            ...activeEntry,
-            category: "catalyst",
-            parentCategory: newParentCategory,
-            sentiment: "bullish",
-          };
-        } else if (newCategory === "block") {
-          newNotes[activeIndex] = {
-            ...activeEntry,
-            category: "block",
-            parentCategory: newParentCategory,
-            sentiment: "bearish",
-          };
-        }
-        return newNotes;
+    const activeNote = notes.find(n => n.id === activeId);
+    if (!activeNote) return;
+
+    // Case 1: Dropped over a container
+    if (overId.includes("-")) {
+      const [newCategory, newParentCategory] = overId.split("-");
+
+      let updates: Partial<AnalysisNote> = {};
+      if (newCategory === "research") {
+        updates = {
+          category: "research",
+          parentCategory: "general",
+          sentiment: undefined,
+        };
+      } else if (newCategory === "catalyst") {
+        updates = {
+          category: "catalyst",
+          parentCategory: newParentCategory,
+          sentiment: "bullish",
+        };
+      } else if (newCategory === "block") {
+        updates = {
+          category: "block",
+          parentCategory: newParentCategory,
+          sentiment: "bearish",
+        };
       }
-  
-      // Case 2: Dropped over another note
-      const overIndex = newNotes.findIndex((e) => e.id === overId);
-      if (overIndex === -1) return prev;
-  
-      const overEntry = newNotes[overIndex];
-      newNotes.splice(activeIndex, 1);
-      const insertAt = activeIndex < overIndex ? overIndex : overIndex + 1;
-  
-      const updatedEntry = { ...activeEntry };
-      if (overEntry.category === "research") {
-        updatedEntry.category = "research";
-        updatedEntry.parentCategory = "general";
-        updatedEntry.sentiment = undefined;
-      } else if (overEntry.category === "catalyst") {
-        updatedEntry.category = "catalyst";
-        updatedEntry.parentCategory = overEntry.parentCategory;
-        updatedEntry.sentiment = "bullish";
-      } else if (overEntry.category === "block") {
-        updatedEntry.category = "block";
-        updatedEntry.parentCategory = overEntry.parentCategory;
-        updatedEntry.sentiment = "bearish";
-      }
-  
-      newNotes.splice(insertAt, 0, updatedEntry);
-      return newNotes;
-    });
+
+      updateNote(activeId, updates);
+    }
   };
   
 
   const handleDragOver = ({ active, over }: DragOverEvent) => {
-    if (!over) return;
-  
-    const activeId = active.id as string;
-    const overId = over.id as string;
-  
-    if (activeId === overId) return;
-  
-    setNotes((prev) => {
-      const activeIndex = prev.findIndex((e) => e.id === activeId);
-      if (activeIndex === -1) return prev;
-  
-      const activeEntry = prev[activeIndex];
-      const newNotes = [...prev];
-  
-      if (overId.includes("-")) {
-        const [newCategory, newParentCategory] = overId.split("-");
-  
-        if (newCategory === "research") {
-          newNotes[activeIndex] = {
-            ...activeEntry,
-            category: "research",
-            parentCategory: "general",
-            sentiment: undefined,
-          };
-        } else if (newCategory === "catalyst") {
-          newNotes[activeIndex] = {
-            ...activeEntry,
-            category: "catalyst",
-            parentCategory: newParentCategory,
-            sentiment: "bullish",
-          };
-        } else if (newCategory === "block") {
-          newNotes[activeIndex] = {
-            ...activeEntry,
-            category: "block",
-            parentCategory: newParentCategory,
-            sentiment: "bearish",
-          };
-        }
-        return newNotes;
-      }
-  
-      return prev;
-    });
+    // Simplified drag over - just for visual feedback
+    return;
   };
   
   // Add position
-  const addPosition = () => {
+  const handleAddPosition = async () => {
     if (newPosition.symbol && newPosition.price) {
-      const position: StockPosition = {
-        ...newPosition,
-        id: Date.now().toString(),
-        symbol: newPosition.symbol.toUpperCase(),
-        timestamp: new Date().toISOString(),
-      };
-      setPositions([position, ...positions]);
-      setNewPosition({
-        symbol: '',
-        price: '',
-        position: 'watching',
-        date: new Date().toISOString().split('T')[0]
-      });
-      setShowAddPosition(false);
+      try {
+        await addStockPosition(newPosition);
+        setNewPosition({
+          symbol: '',
+          price: '',
+          position: 'watching',
+          date: new Date().toISOString().split('T')[0]
+        });
+        setShowAddPosition(false);
+      } catch (error) {
+        console.error('Failed to add position:', error);
+      }
     }
   };
 
   // Add note
-  const addNote = () => {
+  const handleAddNote = async () => {
     if (selectedStock && newNote.title && newNote.description) {
       const stockPosition = positions.find(p => p.symbol === selectedStock);
       if (stockPosition) {
-        const note: AnalysisNote = {
-          ...newNote,
-          id: Date.now().toString(),
-          stockId: stockPosition.id,
-          symbol: selectedStock,
-          timestamp: new Date().toISOString(),
-          tags: newNote.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
-        };
-        setNotes([note, ...notes]);
-        setNewNote({
-          category: 'research',
-          parentCategory: 'general',
-          title: '',
-          description: '',
-          date: new Date().toISOString().split('T')[0],
-          tags: ''
-        });
-        setShowAddNote(false);
+        try {
+          await addNote(stockPosition.id, selectedStock, newNote);
+          setNewNote({
+            category: 'research',
+            parentCategory: 'general',
+            title: '',
+            description: '',
+            date: new Date().toISOString().split('T')[0],
+            tags: ''
+          });
+          setShowAddNote(false);
+        } catch (error) {
+          console.error('Failed to add note:', error);
+        }
       }
     }
   };
 
   // Delete position and related notes
-  const deletePosition = (positionId: string) => {
-    setPositions(prev => prev.filter(p => p.id !== positionId));
-    setNotes(prev => prev.filter(n => n.stockId !== positionId));
-    setShowDeleteConfirm(false);
-    setPositionToDelete(null);
+  const handleDeletePosition = async (positionId: string) => {
+    try {
+      await deleteNotesByStock(positionId);
+      await deleteStockPosition(positionId);
+      setShowDeleteConfirm(false);
+      setPositionToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete position:', error);
+    }
   };
 
   // Handle delete confirmation
@@ -455,10 +218,14 @@ const ThoughtStockJournal = () => {
     setShowEditNote(true);
   };
 
-  const handleDeleteNote = (noteId: string) => {
-    setNotes(prev => prev.filter(n => n.id !== noteId));
-    setShowNoteDetail(false);
-    setSelectedNote(null);
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await deleteNote(noteId);
+      setShowNoteDetail(false);
+      setSelectedNote(null);
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+    }
   };
 
   // Get stock projects for display
@@ -967,7 +734,7 @@ const ThoughtStockJournal = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={addPosition}
+                  onClick={handleAddPosition}
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
                   Add Position
@@ -1093,7 +860,7 @@ const ThoughtStockJournal = () => {
           Cancel
         </button>
         <button
-          onClick={addNote}
+          onClick={handleAddNote}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
         >
           Add Note
@@ -1298,7 +1065,7 @@ const ThoughtStockJournal = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={() => deletePosition(positionToDelete)}
+                  onClick={() => handleDeletePosition(positionToDelete)}
                   className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                 >
                   Delete Position

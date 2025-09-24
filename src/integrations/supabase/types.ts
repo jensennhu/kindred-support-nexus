@@ -14,6 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      analysis_notes: {
+        Row: {
+          category: string
+          created_at: string
+          date: string
+          description: string
+          id: string
+          parent_category: string
+          sentiment: string | null
+          stock_position_id: string
+          symbol: string
+          tags: string[] | null
+          timestamp: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          date: string
+          description: string
+          id?: string
+          parent_category: string
+          sentiment?: string | null
+          stock_position_id: string
+          symbol: string
+          tags?: string[] | null
+          timestamp?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          parent_category?: string
+          sentiment?: string | null
+          stock_position_id?: string
+          symbol?: string
+          tags?: string[] | null
+          timestamp?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_notes_stock_position_id_fkey"
+            columns: ["stock_position_id"]
+            isOneToOne: false
+            referencedRelation: "stock_positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -36,6 +95,42 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      stock_positions: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          position: string
+          price: string
+          symbol: string
+          timestamp: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          position: string
+          price: string
+          symbol: string
+          timestamp?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          position?: string
+          price?: string
+          symbol?: string
+          timestamp?: string
           updated_at?: string
           user_id?: string
         }
