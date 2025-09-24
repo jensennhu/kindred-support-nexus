@@ -7,6 +7,7 @@ export interface StockPosition {
   symbol: string;
   price: string;
   position: 'holding' | 'sold' | 'watching';
+  strategy: string;
   date: string;
   timestamp: string;
 }
@@ -15,6 +16,7 @@ export interface NewStockPosition {
   symbol: string;
   price: string;
   position: 'holding' | 'sold' | 'watching';
+  strategy: string;
   date: string;
 }
 
@@ -40,6 +42,7 @@ export function useStockPositions() {
         symbol: row.symbol,
         price: row.price,
         position: row.position as 'holding' | 'sold' | 'watching',
+        strategy: row.strategy || 'General',
         date: row.date,
         timestamp: row.timestamp,
       }));
@@ -64,6 +67,7 @@ export function useStockPositions() {
           symbol: newPosition.symbol.toUpperCase(),
           price: newPosition.price,
           position: newPosition.position,
+          strategy: newPosition.strategy,
           date: newPosition.date,
           timestamp: new Date().toISOString(),
         })
@@ -77,6 +81,7 @@ export function useStockPositions() {
         symbol: data.symbol,
         price: data.price,
         position: data.position as 'holding' | 'sold' | 'watching',
+        strategy: data.strategy || 'General',
         date: data.date,
         timestamp: data.timestamp,
       };

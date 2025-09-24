@@ -74,6 +74,7 @@ const ThoughtStockJournal = () => {
     symbol: '',
     price: '',
     position: 'watching',
+    strategy: 'General',
     date: new Date().toISOString().split('T')[0]
   });
 
@@ -150,6 +151,7 @@ const ThoughtStockJournal = () => {
           symbol: '',
           price: '',
           position: 'watching',
+          strategy: 'General',
           date: new Date().toISOString().split('T')[0]
         });
         setShowAddPosition(false);
@@ -228,7 +230,7 @@ const ThoughtStockJournal = () => {
     }
   };
 
-  // Get stock projects for display
+  // Get stock projects for display grouped by strategy
   const stockProjects = useMemo(() => {
     return positions.map(position => {
       const stockNotes = notes.filter(note => note.stockId === position.id);
@@ -251,6 +253,17 @@ const ThoughtStockJournal = () => {
     stockProjects.filter(project =>
       project.symbol.toLowerCase().includes(searchTerm.toLowerCase())
     ), [stockProjects, searchTerm]);
+
+  // Group positions by strategy
+  const groupedByStrategy = useMemo(() => {
+    return filteredProjects.reduce((acc, stock) => {
+      if (!acc[stock.strategy]) {
+        acc[stock.strategy] = [];
+      }
+      acc[stock.strategy].push(stock);
+      return acc;
+    }, {} as Record<string, typeof filteredProjects>);
+  }, [filteredProjects]);
 
   const getPositionColor = (position: 'holding' | 'sold' | 'watching') => {
     switch (position) {
@@ -715,14 +728,25 @@ const ThoughtStockJournal = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1">Date</label>
+                    <label className="block text-sm font-medium text-gray-900 mb-1">Strategy</label>
                     <input
-                      type="date"
-                      value={newPosition.date}
-                      onChange={(e) => setNewPosition({...newPosition, date: e.target.value})}
+                      type="text"
+                      value={newPosition.strategy}
+                      onChange={(e) => setNewPosition({...newPosition, strategy: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                      placeholder="e.g. Crypto, LEAPS, Swing Trade"
                     />
                   </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={newPosition.date}
+                    onChange={(e) => setNewPosition({...newPosition, date: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                  />
                 </div>
               </div>
               
