@@ -24,6 +24,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableNote } from './SortableNote';
+import { EditNoteModal } from './EditNoteModal';
 import { createPortal } from 'react-dom';
 
 const PARENT_CATEGORIES = [
@@ -80,6 +81,8 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
 }) => {
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const [draggedNote, setDraggedNote] = React.useState<AnalysisNote | null>(null);
+  const [editingNote, setEditingNote] = React.useState<AnalysisNote | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -161,6 +164,34 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
     }),
   };
 
+  // Handle note editing
+  const handleNoteEdit = (note: AnalysisNote) => {
+    setEditingNote(note);
+    setIsEditModalOpen(true);
+  };
+
+  const handleNoteView = (note: AnalysisNote) => {
+    // For now, just log the note view
+    console.log('Viewing note:', note);
+    // In the future, this could open a view-only modal or navigate to a detail page
+  };
+
+  const handleEditSubmit = async (noteId: string, updates: Partial<AnalysisNote>) => {
+    try {
+      await onUpdateNote(noteId, updates);
+      onShowSuccess('Note updated successfully');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update note';
+      onShowError(message, 'Update Failed');
+      throw error;
+    }
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingNote(null);
+  };
+
   if (loading) {
     return <LoadingSpinner text="Loading analysis..." />;
   }
@@ -226,8 +257,8 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
                             <SortableNote
                               key={note.id}
                               note={note}
-                              onNoteClick={(note) => console.log('Note clicked:', note)}
-                              onNoteEdit={(note) => console.log('Edit note:', note)}
+                              onNoteClick={handleNoteView}
+                              onNoteEdit={handleNoteEdit}
                               onNoteDelete={onDeleteNote}
                             />
                           ))}
@@ -283,8 +314,8 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
                             <SortableNote
                               key={note.id}
                               note={note}
-                              onNoteClick={(note) => console.log('Note clicked:', note)}
-                              onNoteEdit={(note) => console.log('Edit note:', note)}
+                              onNoteClick={handleNoteView}
+                              onNoteEdit={handleNoteEdit}
                               onNoteDelete={onDeleteNote}
                             />
                           ))}
@@ -337,8 +368,8 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
                         <SortableNote
                           key={note.id}
                           note={note}
-                          onNoteClick={(note) => console.log('Note clicked:', note)}
-                          onNoteEdit={(note) => console.log('Edit note:', note)}
+                          onNoteClick={handleNoteView}
+                          onNoteEdit={handleNoteEdit}
                           onNoteDelete={onDeleteNote}
                         />
                       ))}
@@ -386,6 +417,16 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
         </DragOverlay>,
         document.body
       )}
+
+      {/* Edit Note Modal */}
+      <EditNoteModal
+        isOpen={isEditModalOpen}
+        onClose={closeEditModal}
+        onSubmit={handleEditSubmit}
+        note={editingNote}
+        stockSymbol={selectedStock}
+        loading={loading}
+      />
     </DndContext>
   );
 };

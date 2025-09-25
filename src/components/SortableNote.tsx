@@ -100,6 +100,15 @@ export const SortableNote: React.FC<SortableNoteProps> = ({
     onNoteClick(note);
   };
 
+  const handleNoteEdit = (e: React.MouseEvent) => {
+    // Don't trigger note edit if clicking on drag handle or actions
+    if ((e.target as HTMLElement).closest('.drag-handle') || 
+        (e.target as HTMLElement).closest('.note-actions')) {
+      return;
+    }
+    onNoteEdit(note);
+  };
+
   // Show ghost placeholder while dragging
   if (isDragging) {
     return (
@@ -118,7 +127,8 @@ export const SortableNote: React.FC<SortableNoteProps> = ({
       ref={setNodeRef}
       style={style}
       className={`relative p-4 rounded-lg border-l-4 cursor-pointer transition-all group ${getNoteStyling()} hover:shadow-md`}
-      onDoubleClick={handleNoteClick}
+      onClick={handleNoteClick}
+      onDoubleClick={handleNoteEdit}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
