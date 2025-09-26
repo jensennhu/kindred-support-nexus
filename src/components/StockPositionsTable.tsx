@@ -1,6 +1,6 @@
 // src/components/StockPositionsTable.tsx
-import React from 'react';
-import { Target, Zap, AlertTriangle, Brain, ArrowRight, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Target, Zap, AlertTriangle, Brain, ArrowRight, Trash2, Edit3, Save, X } from 'lucide-react';
 
 interface StockProject {
   id: string;
@@ -20,6 +20,7 @@ interface StockPositionsTableProps {
   onRowClick: (symbol: string) => void;
   onAnalyzeClick: (symbol: string, e: React.MouseEvent) => void;
   onDeleteClick: (positionId: string, e: React.MouseEvent) => void;
+  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string }) => Promise<void>;
   loading?: boolean;
   error?: string;
 }
@@ -44,6 +45,9 @@ const TableHeader = () => (
       </th>
       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
         Position
+      </th>
+      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
+        Strategy
       </th>
       <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">
         <div className="flex items-center justify-center gap-1">
@@ -81,7 +85,41 @@ const TableRow: React.FC<{
   onRowClick: (symbol: string) => void;
   onAnalyzeClick: (symbol: string, e: React.MouseEvent) => void;
   onDeleteClick: (positionId: string, e: React.MouseEvent) => void;
-}> = ({ project, onRowClick, onAnalyzeClick, onDeleteClick }) => (
+  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string }) => Promise<void>;
+}> = ({ project, onRowClick, onAnalyzeClick, onDeleteClick, onUpdatePosition }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    price: project.price,
+    position: project.position,
+    strategy: project.strategy
+  });
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await onUpdatePosition(project.id, editData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update position:', error);
+    }
+  };
+
+  const handleCancel = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditData({
+      price: project.price,
+      position: project.position,
+      strategy: project.strategy
+    });
+    setIsEditing(false);
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(true);
+  };
+
+  return (
   <tr 
     key={project.id} 
     className="hover:bg-blue-50 cursor-pointer transition-colors group"
@@ -102,14 +140,51 @@ const TableRow: React.FC<{
       </span>
     </td>
     <td className="px-6 py-4">
-      <span className="text-green-600 font-semibold">
-        ${parseFloat(project.price).toFixed(2)}
-      </span>
+      {isEditing ? (
+        <input
+          type="number"
+          step="0.01"
+          value={editData.price}
+          onChange={(e) => setEditData(prev => ({ ...prev, price: e.target.value }))}
+          onClick={(e) => e.stopPropagation()}
+          className="w-20 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      ) : (
+        <span className="text-green-600 font-semibold">
+          ${parseFloat(project.price).toFixed(2)}
+        </span>
+      )}
     </td>
     <td className="px-6 py-4">
-      <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPositionColor(project.position)}`}>
-        {project.position}
-      </span>
+      {isEditing ? (
+        <select
+          value={editData.position}
+          onChange={(e) => setEditData(prev => ({ ...prev, position: e.target.value as 'holding' | 'sold' | 'watching' }))}
+          onClick={(e) => e.stopPropagation()}
+          className="px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="holding">holding</option>
+          <option value="sold">sold</option>
+          <option value="watching">watching</option>
+        </select>
+      ) : (
+        <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPositionColor(project.position)}`}>
+          {project.position}
+        </span>
+      )}
+    </td>
+    <td className="px-6 py-4">
+      {isEditing ? (
+        <input
+          type="text"
+          value={editData.strategy}
+          onChange={(e) => setEditData(prev => ({ ...prev, strategy: e.target.value }))}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      ) : (
+        <span className="text-gray-700">{project.strategy}</span>
+      )}
     </td>
     <td className="px-6 py-4 text-center">
       <div className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full font-bold">
@@ -134,31 +209,60 @@ const TableRow: React.FC<{
     </td>
     <td className="px-6 py-4 text-center">
       <div className="flex items-center justify-center gap-2">
-        <button
-          onClick={(e) => onAnalyzeClick(project.symbol, e)}
-          className="inline-flex items-center text-blue-600 text-sm font-medium hover:text-blue-800 transition-colors opacity-0 group-hover:opacity-100"
-          aria-label={`Analyze ${project.symbol}`}
-        >
-          <span>Analyze</span>
-          <ArrowRight className="w-4 h-4 ml-1" />
-        </button>
-        <button
-          onClick={(e) => onDeleteClick(project.id, e)}
-          className="text-red-600 hover:text-red-800 transition-colors opacity-0 group-hover:opacity-100"
-          aria-label={`Delete ${project.symbol} position`}
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        {isEditing ? (
+          <>
+            <button
+              onClick={handleSave}
+              className="text-green-600 hover:text-green-800 transition-colors"
+              aria-label="Save changes"
+            >
+              <Save className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleCancel}
+              className="text-gray-600 hover:text-gray-800 transition-colors"
+              aria-label="Cancel editing"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={handleEdit}
+              className="text-gray-600 hover:text-blue-600 transition-colors opacity-0 group-hover:opacity-100"
+              aria-label={`Edit ${project.symbol} position`}
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={(e) => onAnalyzeClick(project.symbol, e)}
+              className="inline-flex items-center text-blue-600 text-sm font-medium hover:text-blue-800 transition-colors opacity-0 group-hover:opacity-100"
+              aria-label={`Analyze ${project.symbol}`}
+            >
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={(e) => onDeleteClick(project.id, e)}
+              className="text-red-600 hover:text-red-800 transition-colors opacity-0 group-hover:opacity-100"
+              aria-label={`Delete ${project.symbol} position`}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        )}
       </div>
     </td>
   </tr>
-);
+  );
+};
 
 export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
   projects,
   onRowClick,
   onAnalyzeClick,
   onDeleteClick,
+  onUpdatePosition,
   loading = false,
   error
 }) => {
@@ -235,6 +339,7 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
                     onRowClick={onRowClick}
                     onAnalyzeClick={onAnalyzeClick}
                     onDeleteClick={onDeleteClick}
+                    onUpdatePosition={onUpdatePosition}
                   />
                 ))}
               </tbody>

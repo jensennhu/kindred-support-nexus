@@ -25,6 +25,7 @@ import {
 import { useDroppable } from '@dnd-kit/core';
 import { SortableNote } from './SortableNote';
 import { EditNoteModal } from './EditNoteModal';
+import { DailyNotes } from './DailyNotes';
 import { createPortal } from 'react-dom';
 
 const PARENT_CATEGORIES = [
@@ -218,8 +219,19 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
           </button>
         </div>
 
-        {/* Columns: Catalysts, Blockers & Research */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main layout with Daily Notes on the left and Analysis Columns on the right */}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+          {/* Daily Notes Column - Left side */}
+          <div className="xl:col-span-1">
+            <DailyNotes 
+              onShowSuccess={onShowSuccess}
+              onShowError={onShowError}
+            />
+          </div>
+
+          {/* Analysis Columns - Right side */}
+          <div className="xl:col-span-3">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Catalysts Column */}
           <div className="bg-white rounded-lg shadow-lg border border-gray-200">
             <div className="p-4 border-b border-gray-200 bg-blue-50">
@@ -382,6 +394,8 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
                   </div>
                 </DroppableContainer>
               </SortableContext>
+            </div>
+          </div>
             </div>
           </div>
         </div>

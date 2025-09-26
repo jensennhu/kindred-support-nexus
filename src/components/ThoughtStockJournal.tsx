@@ -22,6 +22,7 @@ const ThoughtStockJournal = () => {
     loading: positionsLoading, 
     error: positionsError,
     addPosition: addStockPosition, 
+    updatePosition,
     deletePosition: deleteStockPosition,
     clearError: clearPositionsError
   } = useStockPositions();
@@ -152,6 +153,18 @@ const ThoughtStockJournal = () => {
     if (position) {
       setPositionToDelete({ id: positionId, symbol: position.symbol });
       setShowDeleteConfirm(true);
+    }
+  };
+
+  // Update position handler for inline editing
+  const handleUpdatePosition = async (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string }): Promise<void> => {
+    try {
+      await updatePosition(positionId, updates);
+      showSuccessToast('Position updated successfully');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update position';
+      showErrorToast(message, 'Update Failed');
+      throw error;
     }
   };
 
@@ -303,6 +316,7 @@ const ThoughtStockJournal = () => {
                 onRowClick={handleRowClick}
                 onAnalyzeClick={handleAnalyzeClick}
                 onDeleteClick={handleDeleteClick}
+                onUpdatePosition={handleUpdatePosition}
                 loading={positionsLoading}
                 error={positionsError?.message}
               />
