@@ -12,6 +12,7 @@ export interface StockPosition {
   category: string;
   date: string;
   timestamp: string;
+  risk_level: number;
 }
 
 export interface NewStockPosition {
@@ -21,6 +22,7 @@ export interface NewStockPosition {
   strategy: string;
   category: string;
   date: string;
+  risk_level: number;
 }
 
 export interface StockPositionsError {
@@ -64,6 +66,7 @@ export function useStockPositions() {
         category: row.category || 'General',
         date: row.date,
         timestamp: row.timestamp,
+        risk_level: row.risk_level || 50,
       }));
 
       setPositions(formattedPositions);
@@ -147,6 +150,7 @@ export function useStockPositions() {
           strategy: newPosition.strategy.trim(),
           category: newPosition.category.trim(),
           date: newPosition.date,
+          risk_level: newPosition.risk_level,
           timestamp: new Date().toISOString(),
         })
         .select()
@@ -169,6 +173,7 @@ export function useStockPositions() {
         category: data.category || 'General',
         date: data.date,
         timestamp: data.timestamp,
+        risk_level: data.risk_level || 50,
       };
 
       setPositions(prev => [formattedPosition, ...prev]);
@@ -233,6 +238,7 @@ export function useStockPositions() {
           ...(updates.strategy && { strategy: updates.strategy.trim() }),
           ...(updates.category && { category: updates.category.trim() }),
           ...(updates.date && { date: updates.date }),
+          ...(updates.risk_level !== undefined && { risk_level: updates.risk_level }),
           updated_at: new Date().toISOString(),
         })
         .eq('id', positionId)
@@ -256,6 +262,7 @@ export function useStockPositions() {
         category: data.category || 'General',
         date: data.date,
         timestamp: data.timestamp,
+        risk_level: data.risk_level || 50,
       };
 
       setPositions(prev => prev.map(p => p.id === positionId ? formattedPosition : p));

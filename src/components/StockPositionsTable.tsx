@@ -14,6 +14,7 @@ interface StockProject {
   catalystsCount: number;
   blockersCount: number;
   researchCount: number;
+  risk_level: number;
 }
 
 interface StockPositionsTableProps {
@@ -21,7 +22,7 @@ interface StockPositionsTableProps {
   onRowClick: (symbol: string) => void;
   onAnalyzeClick: (symbol: string, e: React.MouseEvent) => void;
   onDeleteClick: (positionId: string, e: React.MouseEvent) => void;
-  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string }) => Promise<void>;
+  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string; risk_level?: number }) => Promise<void>;
   loading?: boolean;
   error?: string;
 }
@@ -45,13 +46,13 @@ const TableHeader = () => (
         Price
       </th>
       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
-        Position
-      </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
         Strategy
       </th>
       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
         Category
+      </th>
+      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
+        Risk Level
       </th>
       <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">
         <div className="flex items-center justify-center gap-1">
@@ -74,9 +75,6 @@ const TableHeader = () => (
       <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">
         Total Notes
       </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
-        Date Added
-      </th>
       <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">
         Actions
       </th>
@@ -89,14 +87,15 @@ const TableRow: React.FC<{
   onRowClick: (symbol: string) => void;
   onAnalyzeClick: (symbol: string, e: React.MouseEvent) => void;
   onDeleteClick: (positionId: string, e: React.MouseEvent) => void;
-  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string }) => Promise<void>;
+  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string; risk_level?: number }) => Promise<void>;
 }> = ({ project, onRowClick, onAnalyzeClick, onDeleteClick, onUpdatePosition }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     price: project.price,
     position: project.position,
     strategy: project.strategy,
-    category: project.category
+    category: project.category,
+    risk_level: project.risk_level
   });
 
   // Calculate sentiment score based on notes balance
@@ -128,9 +127,16 @@ const TableRow: React.FC<{
       price: project.price,
       position: project.position,
       strategy: project.strategy,
-      category: project.category
+      category: project.category,
+      risk_level: project.risk_level
     });
     setIsEditing(false);
+  };
+
+  const getRiskColor = (riskLevel: number) => {
+    // Green (120) to Red (0) on HSL scale
+    const hue = ((100 - riskLevel) / 100) * 120;
+    return `hsl(${hue}, 70%, 50%)`;
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -176,24 +182,6 @@ const TableRow: React.FC<{
     </td>
     <td className="px-6 py-4">
       {isEditing ? (
-        <select
-          value={editData.position}
-          onChange={(e) => setEditData(prev => ({ ...prev, position: e.target.value as 'holding' | 'sold' | 'watching' }))}
-          onClick={(e) => e.stopPropagation()}
-          className="px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="holding">holding</option>
-          <option value="sold">sold</option>
-          <option value="watching">watching</option>
-        </select>
-      ) : (
-        <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPositionColor(project.position)}`}>
-          {project.position}
-        </span>
-      )}
-    </td>
-    <td className="px-6 py-4">
-      {isEditing ? (
         <input
           type="text"
           value={editData.strategy}
@@ -218,6 +206,39 @@ const TableRow: React.FC<{
         <span className="text-gray-700">{project.category}</span>
       )}
     </td>
+    <td className="px-6 py-4">
+      {isEditing ? (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="range"
+            min="1"
+            max="100"
+            value={editData.risk_level}
+            onChange={(e) => setEditData(prev => ({ ...prev, risk_level: parseInt(e.target.value) }))}
+            className="w-24"
+            style={{
+              accentColor: getRiskColor(editData.risk_level)
+            }}
+          />
+          <span className="text-xs font-medium w-8">{editData.risk_level}</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <div 
+            className="h-2 w-24 rounded-full bg-gray-200 overflow-hidden"
+          >
+            <div 
+              className="h-full transition-all"
+              style={{
+                width: `${project.risk_level}%`,
+                backgroundColor: getRiskColor(project.risk_level)
+              }}
+            />
+          </div>
+          <span className="text-xs font-medium text-gray-700">{project.risk_level}</span>
+        </div>
+      )}
+    </td>
     <td className="px-6 py-4 text-center">
       <div className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full font-bold">
         {project.catalystsCount}
@@ -235,9 +256,6 @@ const TableRow: React.FC<{
     </td>
     <td className="px-6 py-4 text-center">
       <span className="text-gray-600 font-medium">{project.notesCount}</span>
-    </td>
-    <td className="px-6 py-4">
-      <span className="text-sm text-gray-600">{project.date}</span>
     </td>
     <td className="px-6 py-4 text-center">
       <div className="flex items-center justify-center gap-2">
@@ -338,8 +356,22 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
     );
   }
 
-  // Group projects by strategy
-  const groupedProjects = projects.reduce((acc, project) => {
+  // Sort projects by Strategy (desc), Category (desc), Risk Level (desc)
+  const sortedProjects = [...projects].sort((a, b) => {
+    // Sort by strategy (descending)
+    const strategyCompare = (b.strategy || 'General').localeCompare(a.strategy || 'General');
+    if (strategyCompare !== 0) return strategyCompare;
+    
+    // Sort by category (descending)
+    const categoryCompare = (b.category || 'General').localeCompare(a.category || 'General');
+    if (categoryCompare !== 0) return categoryCompare;
+    
+    // Sort by risk level (descending)
+    return b.risk_level - a.risk_level;
+  });
+
+  // Group sorted projects by strategy
+  const groupedProjects = sortedProjects.reduce((acc, project) => {
     const strategy = project.strategy || 'General';
     if (!acc[strategy]) {
       acc[strategy] = [];
@@ -348,7 +380,7 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
     return acc;
   }, {} as Record<string, StockProject[]>);
 
-  const strategies = Object.keys(groupedProjects).sort();
+  const strategies = Object.keys(groupedProjects).sort((a, b) => b.localeCompare(a));
 
   return (
     <div className="space-y-8">

@@ -9,6 +9,7 @@ export interface NewStockPosition {
   strategy: string;
   category: string;
   date: string;
+  risk_level: number;
 }
 
 interface AddPositionModalProps {
@@ -25,7 +26,8 @@ const initialPosition: NewStockPosition = {
   position: 'watching',
   strategy: 'General',
   category: 'General',
-  date: new Date().toISOString().split('T')[0]
+  date: new Date().toISOString().split('T')[0],
+  risk_level: 50
 };
 
 export const AddPositionModal: React.FC<AddPositionModalProps> = ({
@@ -43,7 +45,8 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
     if (isOpen) {
       setPosition({
         ...initialPosition,
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
+        risk_level: 50
       });
       setValidationErrors({});
     }
@@ -250,6 +253,28 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
             {validationErrors.date && (
               <p className="mt-1 text-sm text-red-600">{validationErrors.date}</p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-1">
+              Risk Level: {position.risk_level}
+            </label>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              value={position.risk_level}
+              onChange={(e) => setPosition(prev => ({ ...prev, risk_level: parseInt(e.target.value) }))}
+              className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, hsl(120, 70%, 50%) 0%, hsl(60, 70%, 50%) 50%, hsl(0, 70%, 50%) 100%)`
+              }}
+              disabled={loading}
+            />
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>Low Risk</span>
+              <span>High Risk</span>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
