@@ -9,6 +9,7 @@ export interface StockPosition {
   price: string;
   position: 'holding' | 'sold' | 'watching';
   strategy: string;
+  category: string;
   date: string;
   timestamp: string;
 }
@@ -18,6 +19,7 @@ export interface NewStockPosition {
   price: string;
   position: 'holding' | 'sold' | 'watching';
   strategy: string;
+  category: string;
   date: string;
 }
 
@@ -59,6 +61,7 @@ export function useStockPositions() {
         price: row.price,
         position: row.position as 'holding' | 'sold' | 'watching',
         strategy: row.strategy || 'General',
+        category: row.category || 'General',
         date: row.date,
         timestamp: row.timestamp,
       }));
@@ -142,6 +145,7 @@ export function useStockPositions() {
           price: parseFloat(newPosition.price).toFixed(2),
           position: newPosition.position,
           strategy: newPosition.strategy.trim(),
+          category: newPosition.category.trim(),
           date: newPosition.date,
           timestamp: new Date().toISOString(),
         })
@@ -162,6 +166,7 @@ export function useStockPositions() {
         price: data.price,
         position: data.position as 'holding' | 'sold' | 'watching',
         strategy: data.strategy || 'General',
+        category: data.category || 'General',
         date: data.date,
         timestamp: data.timestamp,
       };
@@ -226,6 +231,7 @@ export function useStockPositions() {
           ...(updates.price && { price: parseFloat(updates.price).toFixed(2) }),
           ...(updates.position && { position: updates.position }),
           ...(updates.strategy && { strategy: updates.strategy.trim() }),
+          ...(updates.category && { category: updates.category.trim() }),
           ...(updates.date && { date: updates.date }),
           updated_at: new Date().toISOString(),
         })
@@ -247,6 +253,7 @@ export function useStockPositions() {
         price: data.price,
         position: data.position as 'holding' | 'sold' | 'watching',
         strategy: data.strategy || 'General',
+        category: data.category || 'General',
         date: data.date,
         timestamp: data.timestamp,
       };

@@ -157,7 +157,7 @@ const ThoughtStockJournal = () => {
   };
 
   // Update position handler for inline editing
-  const handleUpdatePosition = async (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string }): Promise<void> => {
+  const handleUpdatePosition = async (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string }): Promise<void> => {
     try {
       await updatePosition(positionId, updates);
       showSuccessToast('Position updated successfully');

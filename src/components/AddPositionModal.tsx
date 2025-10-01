@@ -7,6 +7,7 @@ export interface NewStockPosition {
   price: string;
   position: 'holding' | 'sold' | 'watching';
   strategy: string;
+  category: string;
   date: string;
 }
 
@@ -23,6 +24,7 @@ const initialPosition: NewStockPosition = {
   price: '',
   position: 'watching',
   strategy: 'General',
+  category: 'General',
   date: new Date().toISOString().split('T')[0]
 };
 
@@ -215,6 +217,21 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
                 <p className="mt-1 text-sm text-red-600">{validationErrors.strategy}</p>
               )}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-1">
+              Category
+            </label>
+            <input
+              type="text"
+              value={position.category}
+              onChange={(e) => handleInputChange('category', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+              placeholder="e.g. Tech, Healthcare"
+              maxLength={50}
+              disabled={loading}
+            />
           </div>
           
           <div>

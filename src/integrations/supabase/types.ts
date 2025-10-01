@@ -129,6 +129,7 @@ export type Database = {
       }
       stock_positions: {
         Row: {
+          category: string | null
           created_at: string
           date: string
           id: string
@@ -141,6 +142,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
           date: string
           id?: string
@@ -153,6 +155,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          category?: string | null
           created_at?: string
           date?: string
           id?: string

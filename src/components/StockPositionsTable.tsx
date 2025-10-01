@@ -8,6 +8,7 @@ interface StockProject {
   price: string;
   position: 'holding' | 'sold' | 'watching';
   strategy: string;
+  category: string;
   date: string;
   notesCount: number;
   catalystsCount: number;
@@ -20,7 +21,7 @@ interface StockPositionsTableProps {
   onRowClick: (symbol: string) => void;
   onAnalyzeClick: (symbol: string, e: React.MouseEvent) => void;
   onDeleteClick: (positionId: string, e: React.MouseEvent) => void;
-  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string }) => Promise<void>;
+  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string }) => Promise<void>;
   loading?: boolean;
   error?: string;
 }
@@ -48,6 +49,9 @@ const TableHeader = () => (
       </th>
       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
         Strategy
+      </th>
+      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
+        Category
       </th>
       <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">
         <div className="flex items-center justify-center gap-1">
@@ -85,14 +89,28 @@ const TableRow: React.FC<{
   onRowClick: (symbol: string) => void;
   onAnalyzeClick: (symbol: string, e: React.MouseEvent) => void;
   onDeleteClick: (positionId: string, e: React.MouseEvent) => void;
-  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string }) => Promise<void>;
+  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string }) => Promise<void>;
 }> = ({ project, onRowClick, onAnalyzeClick, onDeleteClick, onUpdatePosition }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     price: project.price,
     position: project.position,
-    strategy: project.strategy
+    strategy: project.strategy,
+    category: project.category
   });
+
+  // Calculate sentiment score based on notes balance
+  const sentimentScore = project.catalystsCount - project.blockersCount;
+  const totalNotes = project.catalystsCount + project.blockersCount + project.researchCount;
+  const getBackgroundColor = () => {
+    if (totalNotes === 0) return 'bg-gray-50';
+    const ratio = sentimentScore / totalNotes;
+    if (ratio > 0.3) return 'bg-green-50';
+    if (ratio > 0) return 'bg-green-25';
+    if (ratio < -0.3) return 'bg-red-50';
+    if (ratio < 0) return 'bg-red-25';
+    return 'bg-yellow-50';
+  };
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -109,7 +127,8 @@ const TableRow: React.FC<{
     setEditData({
       price: project.price,
       position: project.position,
-      strategy: project.strategy
+      strategy: project.strategy,
+      category: project.category
     });
     setIsEditing(false);
   };
@@ -122,7 +141,7 @@ const TableRow: React.FC<{
   return (
   <tr 
     key={project.id} 
-    className="hover:bg-blue-50 cursor-pointer transition-colors group"
+    className={`hover:bg-blue-50 cursor-pointer transition-colors group ${getBackgroundColor()}`}
     onClick={() => onRowClick(project.symbol)}
     role="button"
     tabIndex={0}
@@ -184,6 +203,19 @@ const TableRow: React.FC<{
         />
       ) : (
         <span className="text-gray-700">{project.strategy}</span>
+      )}
+    </td>
+    <td className="px-6 py-4">
+      {isEditing ? (
+        <input
+          type="text"
+          value={editData.category}
+          onChange={(e) => setEditData(prev => ({ ...prev, category: e.target.value }))}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      ) : (
+        <span className="text-gray-700">{project.category}</span>
       )}
     </td>
     <td className="px-6 py-4 text-center">
