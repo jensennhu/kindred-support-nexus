@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import ThoughtStockJournal from "@/components/ThoughtStockJournal";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Loader2, LogOut } from 'lucide-react';
 
 const Index = () => {
@@ -33,7 +34,8 @@ const Index = () => {
 
   return (
     <div className="relative">
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+        <ThemeToggle />
         <Button 
           variant="outline" 
           size="sm" 
