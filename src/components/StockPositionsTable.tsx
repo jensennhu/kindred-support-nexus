@@ -37,45 +37,45 @@ const getPositionColor = (position: 'holding' | 'sold' | 'watching') => {
 };
 
 const TableHeader = () => (
-  <thead className="bg-gray-50 border-b border-gray-200">
+  <thead className="bg-muted border-b border-border">
     <tr>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
+      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
         Stock
       </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
+      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
         Price
       </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
+      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
         Strategy
       </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
+      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
         Category
       </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">
+      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
         Risk Level
       </th>
-      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">
+      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
         <div className="flex items-center justify-center gap-1">
-          <Zap className="w-4 h-4 text-blue-600" />
+          <Zap className="w-4 h-4 text-bullish" />
           Catalysts
         </div>
       </th>
-      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">
+      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
         <div className="flex items-center justify-center gap-1">
-          <AlertTriangle className="w-4 h-4 text-orange-600" />
+          <AlertTriangle className="w-4 h-4 text-bearish" />
           Blockers
         </div>
       </th>
-      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">
+      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
         <div className="flex items-center justify-center gap-1">
-          <Brain className="w-4 h-4 text-gray-600" />
+          <Brain className="w-4 h-4 text-muted-foreground" />
           Research
         </div>
       </th>
-      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">
+      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
         Total Notes
       </th>
-      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-800">
+      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
         Actions
       </th>
     </tr>
@@ -102,13 +102,13 @@ const TableRow: React.FC<{
   const sentimentScore = project.catalystsCount - project.blockersCount;
   const totalNotes = project.catalystsCount + project.blockersCount + project.researchCount;
   const getBackgroundColor = () => {
-    if (totalNotes === 0) return 'bg-gray-50';
+    if (totalNotes === 0) return 'bg-muted/20';
     const ratio = sentimentScore / totalNotes;
-    if (ratio > 0.3) return 'bg-green-50';
-    if (ratio > 0) return 'bg-green-25';
-    if (ratio < -0.3) return 'bg-red-50';
-    if (ratio < 0) return 'bg-red-25';
-    return 'bg-yellow-50';
+    if (ratio > 0.3) return 'bg-bullish/10';
+    if (ratio > 0) return 'bg-bullish/5';
+    if (ratio < -0.3) return 'bg-bearish/10';
+    if (ratio < 0) return 'bg-bearish/5';
+    return 'bg-warning/10';
   };
 
   const handleSave = async (e: React.MouseEvent) => {
@@ -147,7 +147,7 @@ const TableRow: React.FC<{
   return (
   <tr 
     key={project.id} 
-    className={`hover:bg-blue-50 cursor-pointer transition-colors group ${getBackgroundColor()}`}
+    className={`hover:bg-accent/50 cursor-pointer transition-colors group ${getBackgroundColor()}`}
     onClick={() => onRowClick(project.symbol)}
     role="button"
     tabIndex={0}
@@ -160,7 +160,7 @@ const TableRow: React.FC<{
     aria-label={`View analysis for ${project.symbol}`}
   >
     <td className="px-6 py-4">
-      <span className="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
+      <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
         {project.symbol}
       </span>
     </td>
@@ -172,10 +172,10 @@ const TableRow: React.FC<{
           value={editData.price}
           onChange={(e) => setEditData(prev => ({ ...prev, price: e.target.value }))}
           onClick={(e) => e.stopPropagation()}
-          className="w-20 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-20 px-2 py-1 text-sm border border-border bg-background text-foreground rounded focus:outline-none focus:ring-2 focus:ring-ring"
         />
       ) : (
-        <span className="text-green-600 font-semibold">
+        <span className="text-bullish font-semibold">
           ${parseFloat(project.price).toFixed(2)}
         </span>
       )}
@@ -187,10 +187,10 @@ const TableRow: React.FC<{
           value={editData.strategy}
           onChange={(e) => setEditData(prev => ({ ...prev, strategy: e.target.value }))}
           onClick={(e) => e.stopPropagation()}
-          className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-2 py-1 text-sm border border-border bg-background text-foreground rounded focus:outline-none focus:ring-2 focus:ring-ring"
         />
       ) : (
-        <span className="text-gray-700">{project.strategy}</span>
+        <span className="text-foreground">{project.strategy}</span>
       )}
     </td>
     <td className="px-6 py-4">
@@ -200,10 +200,10 @@ const TableRow: React.FC<{
           value={editData.category}
           onChange={(e) => setEditData(prev => ({ ...prev, category: e.target.value }))}
           onClick={(e) => e.stopPropagation()}
-          className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-2 py-1 text-sm border border-border bg-background text-foreground rounded focus:outline-none focus:ring-2 focus:ring-ring"
         />
       ) : (
-        <span className="text-gray-700">{project.category}</span>
+        <span className="text-foreground">{project.category}</span>
       )}
     </td>
     <td className="px-6 py-4">
@@ -225,7 +225,7 @@ const TableRow: React.FC<{
       ) : (
         <div className="flex items-center gap-2">
           <div 
-            className="h-2 w-24 rounded-full bg-gray-200 overflow-hidden"
+            className="h-2 w-24 rounded-full bg-muted overflow-hidden"
           >
             <div 
               className="h-full transition-all"
@@ -235,27 +235,27 @@ const TableRow: React.FC<{
               }}
             />
           </div>
-          <span className="text-xs font-medium text-gray-700">{project.risk_level}</span>
+          <span className="text-xs font-medium text-foreground">{project.risk_level}</span>
         </div>
       )}
     </td>
     <td className="px-6 py-4 text-center">
-      <div className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full font-bold">
+      <div className="inline-flex items-center justify-center w-8 h-8 bg-bullish/20 text-bullish rounded-full font-bold">
         {project.catalystsCount}
       </div>
     </td>
     <td className="px-6 py-4 text-center">
-      <div className="inline-flex items-center justify-center w-8 h-8 bg-orange-100 text-orange-800 rounded-full font-bold">
+      <div className="inline-flex items-center justify-center w-8 h-8 bg-bearish/20 text-bearish rounded-full font-bold">
         {project.blockersCount}
       </div>
     </td>
     <td className="px-6 py-4 text-center">
-      <div className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 text-gray-800 rounded-full font-bold">
+      <div className="inline-flex items-center justify-center w-8 h-8 bg-muted text-muted-foreground rounded-full font-bold">
         {project.researchCount}
       </div>
     </td>
     <td className="px-6 py-4 text-center">
-      <span className="text-gray-600 font-medium">{project.notesCount}</span>
+      <span className="text-foreground font-medium">{project.notesCount}</span>
     </td>
     <td className="px-6 py-4 text-center">
       <div className="flex items-center justify-center gap-2">
@@ -280,21 +280,21 @@ const TableRow: React.FC<{
           <>
             <button
               onClick={handleEdit}
-              className="text-gray-600 hover:text-blue-600 transition-colors opacity-0 group-hover:opacity-100"
+              className="text-muted-foreground hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
               aria-label={`Edit ${project.symbol} position`}
             >
               <Edit3 className="w-4 h-4" />
             </button>
             <button
               onClick={(e) => onAnalyzeClick(project.symbol, e)}
-              className="inline-flex items-center text-blue-600 text-sm font-medium hover:text-blue-800 transition-colors opacity-0 group-hover:opacity-100"
+              className="inline-flex items-center text-primary text-sm font-medium hover:text-primary/80 transition-colors opacity-0 group-hover:opacity-100"
               aria-label={`Analyze ${project.symbol}`}
             >
               <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={(e) => onDeleteClick(project.id, e)}
-              className="text-red-600 hover:text-red-800 transition-colors opacity-0 group-hover:opacity-100"
+              className="text-destructive hover:text-destructive/80 transition-colors opacity-0 group-hover:opacity-100"
               aria-label={`Delete ${project.symbol} position`}
             >
               <Trash2 className="w-4 h-4" />
@@ -318,13 +318,13 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
 }) => {
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+      <div className="bg-card rounded-lg shadow-lg border border-border overflow-hidden">
         <div className="p-8 text-center">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/4 mx-auto mb-4"></div>
+            <div className="h-4 bg-muted rounded w-1/4 mx-auto mb-4"></div>
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-4 bg-gray-200 rounded"></div>
+                <div key={i} className="h-4 bg-muted rounded"></div>
               ))}
             </div>
           </div>
@@ -335,11 +335,11 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-lg border border-red-200 overflow-hidden">
+      <div className="bg-card rounded-lg shadow-lg border border-destructive overflow-hidden">
         <div className="p-8 text-center">
-          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 mb-2">Error loading positions</p>
-          <p className="text-sm text-gray-600">{error}</p>
+          <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <p className="text-destructive mb-2">Error loading positions</p>
+          <p className="text-sm text-muted-foreground">{error}</p>
         </div>
       </div>
     );
@@ -347,10 +347,10 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
 
   if (projects.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+      <div className="bg-card rounded-lg shadow-lg border border-border overflow-hidden">
         <div className="text-center py-12">
-          <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 mb-4">No stock positions yet. Add your first position!</p>
+          <Target className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+          <p className="text-muted-foreground mb-4">No stock positions yet. Add your first position!</p>
         </div>
       </div>
     );
@@ -385,17 +385,17 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
   return (
     <div className="space-y-8">
       {strategies.map((strategy) => (
-        <div key={strategy} className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">{strategy}</h3>
-            <p className="text-sm text-gray-600 mt-1">
+        <div key={strategy} className="bg-card rounded-lg shadow-lg border border-border overflow-hidden">
+          <div className="px-6 py-4 bg-muted border-b border-border">
+            <h3 className="text-lg font-semibold text-foreground">{strategy}</h3>
+            <p className="text-sm text-muted-foreground mt-1">
               {groupedProjects[strategy].length} position{groupedProjects[strategy].length !== 1 ? 's' : ''}
             </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <TableHeader />
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border">
                 {groupedProjects[strategy].map(project => (
                   <TableRow
                     key={project.id}

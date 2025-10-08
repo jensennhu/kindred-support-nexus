@@ -229,26 +229,26 @@ const ThoughtStockJournal = () => {
       console.error('ThoughtStockJournal error:', error, errorInfo);
       showErrorToast('An unexpected error occurred. Please refresh the page.');
     }}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-3">
-              <Target className="w-10 h-10 text-blue-600" />
+            <h1 className="text-4xl font-bold text-foreground mb-2 flex items-center justify-center gap-3">
+              <Target className="w-10 h-10 text-primary" />
               Stock Analysis Board
             </h1>
-            <p className="text-gray-600">Manage your stock positions and detailed analysis separately</p>
+            <p className="text-muted-foreground">Manage your stock positions and detailed analysis separately</p>
           </div>
 
           {/* Navigation */}
           <div className="flex justify-center mb-8">
-            <div className="bg-white rounded-lg p-1 shadow-lg border border-gray-200">
+            <div className="bg-card rounded-lg p-1 shadow-lg border border-border">
               <button
                 onClick={handleBackToPositions}
                 className={`px-6 py-2 rounded-md transition-all ${
                   activeTab === 'positions' 
-                    ? 'bg-blue-600 text-white shadow-md' 
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-primary text-primary-foreground shadow-md' 
+                    : 'text-muted-foreground hover:bg-muted'
                 }`}
               >
                 Stock Positions {positions.length > 0 && `(${positions.length})`}
@@ -258,8 +258,8 @@ const ThoughtStockJournal = () => {
                   onClick={() => setActiveTab('analysis')}
                   className={`px-6 py-2 rounded-md transition-all ${
                     activeTab === 'analysis' 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-primary text-primary-foreground shadow-md' 
+                      : 'text-muted-foreground hover:bg-muted'
                   }`}
                 >
                   {selectedStock} Analysis
@@ -277,14 +277,14 @@ const ThoughtStockJournal = () => {
             <div className="space-y-6">
               {/* Error Display */}
               {(positionsError || notesError) && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h3 className="text-red-800 font-semibold mb-2">Error Loading Data</h3>
-                  <p className="text-red-600 text-sm">
+                <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
+                  <h3 className="text-destructive font-semibold mb-2">Error Loading Data</h3>
+                  <p className="text-destructive/90 text-sm">
                     {positionsError?.message || notesError?.message}
                   </p>
                   <button
                     onClick={clearErrors}
-                    className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                    className="mt-2 text-sm text-destructive hover:text-destructive/80 underline"
                   >
                     Dismiss
                   </button>
@@ -304,7 +304,7 @@ const ThoughtStockJournal = () => {
                 
                 <button
                   onClick={() => setShowAddPosition(true)}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap"
+                  className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 whitespace-nowrap"
                 >
                   <Plus className="w-5 h-5" />
                   Add Position
@@ -325,10 +325,10 @@ const ThoughtStockJournal = () => {
               {/* Empty State for Search */}
               {searchTerm && filteredProjects.length === 0 && stockProjects.length > 0 && (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">No positions found matching "{searchTerm}"</p>
+                  <p className="text-muted-foreground">No positions found matching "{searchTerm}"</p>
                   <button
                     onClick={() => setSearchTerm('')}
-                    className="text-blue-600 hover:text-blue-800 underline mt-2"
+                    className="text-primary hover:text-primary/80 underline mt-2"
                   >
                     Clear search
                   </button>
@@ -342,12 +342,12 @@ const ThoughtStockJournal = () => {
             <div className="space-y-6">
               {/* Error display */}
               {notesError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h3 className="text-red-800 font-semibold mb-2">Error Loading Notes</h3>
-                  <p className="text-red-600 text-sm">{notesError.message}</p>
+                <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
+                  <h3 className="text-destructive font-semibold mb-2">Error Loading Notes</h3>
+                  <p className="text-destructive/90 text-sm">{notesError.message}</p>
                   <button
                     onClick={clearNotesError}
-                    className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                    className="mt-2 text-sm text-destructive hover:text-destructive/80 underline"
                   >
                     Dismiss
                   </button>

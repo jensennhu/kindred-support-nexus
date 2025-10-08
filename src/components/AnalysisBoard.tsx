@@ -50,8 +50,8 @@ function DroppableContainer({ id, children }: DroppableContainerProps) {
       ref={setNodeRef}
       className={`min-h-[120px] p-3 rounded-lg border-2 border-dashed transition-all ${
         isOver 
-          ? "bg-blue-50 border-blue-400 shadow-md" 
-          : "bg-gray-50 border-gray-200 hover:border-gray-300"
+          ? "bg-primary/10 border-primary shadow-md" 
+          : "bg-muted border-border hover:border-border/80"
       }`}
     >
       {children}
@@ -207,12 +207,12 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{selectedStock} Analysis Board</h2>
-            <p className="text-gray-600">Drag notes between categories to reorganize your analysis</p>
+            <h2 className="text-2xl font-bold text-foreground">{selectedStock} Analysis Board</h2>
+            <p className="text-muted-foreground">Drag notes between categories to reorganize your analysis</p>
           </div>
           <button
             onClick={onAddNote}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Add Note
@@ -222,12 +222,12 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
         {/* Analysis Columns - Full width */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Catalysts Column */}
-          <div className="bg-white rounded-lg shadow-lg border border-gray-200">
-            <div className="p-4 border-b border-gray-200 bg-blue-50">
+          <div className="bg-card rounded-lg shadow-lg border border-border">
+            <div className="p-4 border-b border-border bg-bullish/10">
               <div className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Catalysts</h3>
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-medium">
+                <Zap className="w-5 h-5 text-bullish" />
+                <h3 className="font-semibold text-foreground">Catalysts</h3>
+                <span className="bg-bullish/20 text-bullish px-2 py-1 rounded-full text-sm font-medium">
                   {notes.filter(n => n.category === "catalyst").length}
                 </span>
               </div>
@@ -246,31 +246,31 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
                       items={categoryNotes.map(n => n.id)}
                       strategy={verticalListSortingStrategy}
                     >
-                      <DroppableContainer id={`catalyst-${parentCat.id}`}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <Icon className={`w-4 h-4 ${parentCat.color}`} />
-                          <h4 className="font-medium text-sm text-gray-900">{parentCat.name}</h4>
-                          <span className="text-xs text-gray-500">({categoryNotes.length})</span>
-                        </div>
+                        <DroppableContainer id={`catalyst-${parentCat.id}`}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Icon className={`w-4 h-4 ${parentCat.color}`} />
+                            <h4 className="font-medium text-sm text-foreground">{parentCat.name}</h4>
+                            <span className="text-xs text-muted-foreground">({categoryNotes.length})</span>
+                          </div>
 
-                        <div className="space-y-3">
-                          {categoryNotes.map(note => (
-                            <SortableNote
-                              key={note.id}
-                              note={note}
-                              onNoteClick={handleNoteView}
-                              onNoteEdit={handleNoteEdit}
-                              onNoteDelete={onDeleteNote}
-                            />
-                          ))}
+                          <div className="space-y-3">
+                            {categoryNotes.map(note => (
+                              <SortableNote
+                                key={note.id}
+                                note={note}
+                                onNoteClick={handleNoteView}
+                                onNoteEdit={handleNoteEdit}
+                                onNoteDelete={onDeleteNote}
+                              />
+                            ))}
 
-                          {categoryNotes.length === 0 && (
-                            <div className="text-center py-2">
-                              <p className="text-xs text-gray-400">Drop catalyst notes here</p>
-                            </div>
-                          )}
-                        </div>
-                      </DroppableContainer>
+                            {categoryNotes.length === 0 && (
+                              <div className="text-center py-2">
+                                <p className="text-xs text-muted-foreground">Drop catalyst notes here</p>
+                              </div>
+                            )}
+                          </div>
+                        </DroppableContainer>
                     </SortableContext>
                   </div>
                 );
@@ -279,12 +279,12 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
           </div>
 
           {/* Blockers Column */}
-          <div className="bg-white rounded-lg shadow-lg border border-gray-200">
-            <div className="p-4 border-b border-gray-200 bg-orange-50">
+          <div className="bg-card rounded-lg shadow-lg border border-border">
+            <div className="p-4 border-b border-border bg-bearish/10">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-orange-600" />
-                <h3 className="font-semibold text-gray-900">Blockers</h3>
-                <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-sm font-medium">
+                <AlertTriangle className="w-5 h-5 text-bearish" />
+                <h3 className="font-semibold text-foreground">Blockers</h3>
+                <span className="bg-bearish/20 text-bearish px-2 py-1 rounded-full text-sm font-medium">
                   {notes.filter(n => n.category === "block").length}
                 </span>
               </div>
@@ -336,12 +336,12 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
           </div>
 
           {/* Research Column */}
-          <div className="bg-white rounded-lg shadow-lg border border-gray-200">
-            <div className="p-4 border-b border-gray-200 bg-gray-50">
+          <div className="bg-card rounded-lg shadow-lg border border-border">
+            <div className="p-4 border-b border-border bg-muted">
               <div className="flex items-center gap-2">
-                <Brain className="w-5 h-5 text-gray-600" />
-                <h3 className="font-semibold text-gray-900">Research</h3>
-                <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-sm font-medium">
+                <Brain className="w-5 h-5 text-muted-foreground" />
+                <h3 className="font-semibold text-foreground">Research</h3>
+                <span className="bg-muted text-muted-foreground px-2 py-1 rounded-full text-sm font-medium">
                   {notes.filter(n => n.category === "research").length}
                 </span>
               </div>
@@ -354,9 +354,9 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
               >
                 <DroppableContainer id="research-general">
                   <div className="flex items-center gap-2 mb-3">
-                    <Brain className="w-4 h-4 text-gray-600" />
-                    <h4 className="font-medium text-sm text-gray-900">General Research</h4>
-                    <span className="text-xs text-gray-500">
+                    <Brain className="w-4 h-4 text-muted-foreground" />
+                    <h4 className="font-medium text-sm text-foreground">General Research</h4>
+                    <span className="text-xs text-muted-foreground">
                       ({notes.filter(n => n.category === "research").length})
                     </span>
                   </div>
@@ -377,7 +377,7 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
 
                     {notes.filter(n => n.category === "research").length === 0 && (
                       <div className="text-center py-2">
-                        <p className="text-xs text-gray-400">Drop research notes here</p>
+                        <p className="text-xs text-muted-foreground">Drop research notes here</p>
                       </div>
                     )}
                   </div>
@@ -390,11 +390,11 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
         {/* Empty State */}
         {notes.length === 0 && (
           <div className="text-center py-12">
-            <Brain className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 mb-4">No analysis notes for {selectedStock} yet.</p>
+            <Brain className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+            <p className="text-muted-foreground mb-4">No analysis notes for {selectedStock} yet.</p>
             <button
               onClick={onAddNote}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
             >
               Add First Note
             </button>
