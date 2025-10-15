@@ -10,6 +10,7 @@ export interface NewStockPosition {
   category: string;
   date: string;
   risk_level: number;
+  position_size: number;
 }
 
 interface AddPositionModalProps {
@@ -27,7 +28,8 @@ const initialPosition: NewStockPosition = {
   strategy: 'General',
   category: 'General',
   date: new Date().toISOString().split('T')[0],
-  risk_level: 50
+  risk_level: 50,
+  position_size: 0
 };
 
 export const AddPositionModal: React.FC<AddPositionModalProps> = ({
@@ -46,7 +48,8 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
       setPosition({
         ...initialPosition,
         date: new Date().toISOString().split('T')[0],
-        risk_level: 50
+        risk_level: 50,
+        position_size: 0
       });
       setValidationErrors({});
     }
@@ -182,6 +185,22 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
             {validationErrors.price && (
               <p className="mt-1 text-sm text-red-600">{validationErrors.price}</p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-1">
+              Position Size
+            </label>
+            <input
+              type="number"
+              step="100"
+              min="0"
+              value={position.position_size}
+              onChange={(e) => setPosition(prev => ({ ...prev, position_size: parseFloat(e.target.value) || 0 }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+              placeholder="0"
+              disabled={loading}
+            />
           </div>
           
           <div className="grid grid-cols-2 gap-4">

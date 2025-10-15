@@ -1,6 +1,9 @@
 // src/components/StockPositionsTable.tsx
 import React, { useState } from 'react';
-import { Target, Zap, AlertTriangle, Brain, ArrowRight, Trash2, Edit3, Save, X } from 'lucide-react';
+import { Target, Zap, AlertTriangle, Brain, ArrowRight, Trash2, Edit3, Save, X, GripVertical } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface StockProject {
   id: string;
@@ -15,6 +18,7 @@ interface StockProject {
   blockersCount: number;
   researchCount: number;
   risk_level: number;
+  position_size: number;
 }
 
 interface StockPositionsTableProps {
@@ -22,7 +26,8 @@ interface StockPositionsTableProps {
   onRowClick: (symbol: string) => void;
   onAnalyzeClick: (symbol: string, e: React.MouseEvent) => void;
   onDeleteClick: (positionId: string, e: React.MouseEvent) => void;
-  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string; risk_level?: number }) => Promise<void>;
+  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string; risk_level?: number; position_size?: number }) => Promise<void>;
+  onMoveToStrategy: (positionId: string, newStrategy: string) => Promise<void>;
   loading?: boolean;
   error?: string;
 }
@@ -39,11 +44,15 @@ const getPositionColor = (position: 'holding' | 'sold' | 'watching') => {
 const TableHeader = () => (
   <thead className="bg-muted border-b border-border">
     <tr>
+      <th className="px-2 py-4 text-left"></th>
       <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
         Stock
       </th>
       <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
         Price
+      </th>
+      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+        Position Size
       </th>
       <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
         Strategy
@@ -82,12 +91,12 @@ const TableHeader = () => (
   </thead>
 );
 
-const TableRow: React.FC<{
+const SortableTableRow: React.FC<{
   project: StockProject;
   onRowClick: (symbol: string) => void;
   onAnalyzeClick: (symbol: string, e: React.MouseEvent) => void;
   onDeleteClick: (positionId: string, e: React.MouseEvent) => void;
-  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string; risk_level?: number }) => Promise<void>;
+  onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string; risk_level?: number; position_size?: number }) => Promise<void>;
 }> = ({ project, onRowClick, onAnalyzeClick, onDeleteClick, onUpdatePosition }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
@@ -95,8 +104,24 @@ const TableRow: React.FC<{
     position: project.position,
     strategy: project.strategy,
     category: project.category,
-    risk_level: project.risk_level
+    risk_level: project.risk_level,
+    position_size: project.position_size
   });
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: project.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   // Calculate sentiment score based on notes balance
   const sentimentScore = project.catalystsCount - project.blockersCount;
@@ -128,7 +153,8 @@ const TableRow: React.FC<{
       position: project.position,
       strategy: project.strategy,
       category: project.category,
-      risk_level: project.risk_level
+      risk_level: project.risk_level,
+      position_size: project.position_size
     });
     setIsEditing(false);
   };
@@ -146,9 +172,11 @@ const TableRow: React.FC<{
 
   return (
   <tr 
+    ref={setNodeRef}
+    style={style}
     key={project.id} 
     className={`hover:bg-accent/50 cursor-pointer transition-colors group ${getBackgroundColor()}`}
-    onClick={() => onRowClick(project.symbol)}
+    onClick={() => !isEditing && onRowClick(project.symbol)}
     role="button"
     tabIndex={0}
     onKeyDown={(e) => {
@@ -159,6 +187,16 @@ const TableRow: React.FC<{
     }}
     aria-label={`View analysis for ${project.symbol}`}
   >
+    <td className="px-2 py-4">
+      <button
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="w-5 h-5" />
+      </button>
+    </td>
     <td className="px-6 py-4">
       <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
         {project.symbol}
@@ -177,6 +215,22 @@ const TableRow: React.FC<{
       ) : (
         <span className="text-bullish font-semibold">
           ${parseFloat(project.price).toFixed(2)}
+        </span>
+      )}
+    </td>
+    <td className="px-6 py-4">
+      {isEditing ? (
+        <input
+          type="number"
+          step="100"
+          value={editData.position_size}
+          onChange={(e) => setEditData(prev => ({ ...prev, position_size: parseFloat(e.target.value) || 0 }))}
+          onClick={(e) => e.stopPropagation()}
+          className="w-24 px-2 py-1 text-sm border border-border bg-background text-foreground rounded focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      ) : (
+        <span className="text-foreground font-semibold">
+          ${project.position_size.toLocaleString()}
         </span>
       )}
     </td>
@@ -313,9 +367,17 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
   onAnalyzeClick,
   onDeleteClick,
   onUpdatePosition,
+  onMoveToStrategy,
   loading = false,
   error
 }) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   if (loading) {
     return (
       <div className="bg-card rounded-lg shadow-lg border border-border overflow-hidden">
@@ -382,35 +444,78 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
 
   const strategies = Object.keys(groupedProjects).sort((a, b) => b.localeCompare(a));
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+
+    // Find which strategy group the dragged item is being dropped into
+    const draggedProject = projects.find(p => p.id === active.id);
+    if (!draggedProject) return;
+
+    // Check if dropped onto a different strategy group
+    for (const [strategy, strategyProjects] of Object.entries(groupedProjects)) {
+      const isInGroup = strategyProjects.some(p => p.id === over.id);
+      if (isInGroup && draggedProject.strategy !== strategy) {
+        onMoveToStrategy(draggedProject.id, strategy);
+        break;
+      }
+    }
+  };
+
   return (
-    <div className="space-y-8">
-      {strategies.map((strategy) => (
-        <div key={strategy} className="bg-card rounded-lg shadow-lg border border-border overflow-hidden">
-          <div className="px-6 py-4 bg-muted border-b border-border">
-            <h3 className="text-lg font-semibold text-foreground">{strategy}</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              {groupedProjects[strategy].length} position{groupedProjects[strategy].length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <TableHeader />
-              <tbody className="divide-y divide-border">
-                {groupedProjects[strategy].map(project => (
-                  <TableRow
-                    key={project.id}
-                    project={project}
-                    onRowClick={onRowClick}
-                    onAnalyzeClick={onAnalyzeClick}
-                    onDeleteClick={onDeleteClick}
-                    onUpdatePosition={onUpdatePosition}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
-    </div>
+    <DndContext 
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="space-y-8">
+        {strategies.map((strategy) => {
+          const strategyProjects = groupedProjects[strategy];
+          const totalPositionSize = strategyProjects.reduce((sum, p) => sum + p.position_size, 0);
+          
+          return (
+            <div key={strategy} className="bg-card rounded-lg shadow-lg border border-border overflow-hidden">
+              <div className="px-6 py-4 bg-muted border-b border-border">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">{strategy}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {strategyProjects.length} position{strategyProjects.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Total Position Size</p>
+                    <p className="text-xl font-bold text-primary">${totalPositionSize.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <TableHeader />
+                  <tbody className="divide-y divide-border">
+                    <SortableContext
+                      items={strategyProjects.map(p => p.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {strategyProjects.map(project => (
+                        <SortableTableRow
+                          key={project.id}
+                          project={project}
+                          onRowClick={onRowClick}
+                          onAnalyzeClick={onAnalyzeClick}
+                          onDeleteClick={onDeleteClick}
+                          onUpdatePosition={onUpdatePosition}
+                        />
+                      ))}
+                    </SortableContext>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </DndContext>
   );
 };

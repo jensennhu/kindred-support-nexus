@@ -134,6 +134,7 @@ export type Database = {
           date: string
           id: string
           position: string
+          position_size: number | null
           price: string
           risk_level: number | null
           strategy: string | null
@@ -148,6 +149,7 @@ export type Database = {
           date: string
           id?: string
           position: string
+          position_size?: number | null
           price: string
           risk_level?: number | null
           strategy?: string | null
@@ -162,6 +164,7 @@ export type Database = {
           date?: string
           id?: string
           position?: string
+          position_size?: number | null
           price?: string
           risk_level?: number | null
           strategy?: string | null

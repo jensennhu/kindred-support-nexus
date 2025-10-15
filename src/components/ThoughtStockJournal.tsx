@@ -157,13 +157,25 @@ const ThoughtStockJournal = () => {
   };
 
   // Update position handler for inline editing
-  const handleUpdatePosition = async (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string; risk_level?: number }): Promise<void> => {
+  const handleUpdatePosition = async (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string; risk_level?: number; position_size?: number }): Promise<void> => {
     try {
       await updatePosition(positionId, updates);
       showSuccessToast('Position updated successfully');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update position';
       showErrorToast(message, 'Update Failed');
+      throw error;
+    }
+  };
+
+  // Move position to a different strategy group
+  const handleMoveToStrategy = async (positionId: string, newStrategy: string): Promise<void> => {
+    try {
+      await updatePosition(positionId, { strategy: newStrategy });
+      showSuccessToast('Position moved successfully');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to move position';
+      showErrorToast(message, 'Move Failed');
       throw error;
     }
   };
@@ -203,6 +215,7 @@ const ThoughtStockJournal = () => {
         blockersCount,
         researchCount,
         risk_level: position.risk_level || 50,
+        position_size: position.position_size || 0,
         notes: stockNotes
       };
     });
@@ -318,6 +331,7 @@ const ThoughtStockJournal = () => {
                 onAnalyzeClick={handleAnalyzeClick}
                 onDeleteClick={handleDeleteClick}
                 onUpdatePosition={handleUpdatePosition}
+                onMoveToStrategy={handleMoveToStrategy}
                 loading={positionsLoading}
                 error={positionsError?.message}
               />
