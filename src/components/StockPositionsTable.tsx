@@ -1,6 +1,6 @@
 // src/components/StockPositionsTable.tsx
 import React, { useState } from 'react';
-import { Target, AlertTriangle, ArrowRight, Trash2, Edit3, Save, X, GripVertical } from 'lucide-react';
+import { Target, AlertTriangle, ArrowRight, Trash2, Edit3, Save, X, GripVertical, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -38,40 +38,97 @@ const getPositionColor = (position: 'holding' | 'sold' | 'watching') => {
   }
 };
 
-const TableHeader = () => (
-  <thead className="bg-muted border-b border-border">
-    <tr>
-      <th className="px-2 py-4 text-left"></th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-        Stock
-      </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-        Price
-      </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-        Position Size
-      </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-        % of Strategy
-      </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-        Strategy
-      </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-        Category
-      </th>
-      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-        Risk Level
-      </th>
-      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
-        Total Notes
-      </th>
-      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
-        Actions
-      </th>
-    </tr>
-  </thead>
-);
+type SortColumn = 'symbol' | 'price' | 'position_size' | 'strategy' | 'category' | 'risk_level' | 'notesCount';
+type SortDirection = 'asc' | 'desc' | null;
+
+const TableHeader: React.FC<{
+  sortColumn: SortColumn | null;
+  sortDirection: SortDirection;
+  onSort: (column: SortColumn) => void;
+}> = ({ sortColumn, sortDirection, onSort }) => {
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) return <ArrowUpDown className="w-4 h-4 ml-1 opacity-50" />;
+    if (sortDirection === 'asc') return <ArrowUp className="w-4 h-4 ml-1" />;
+    return <ArrowDown className="w-4 h-4 ml-1" />;
+  };
+
+  return (
+    <thead className="bg-muted border-b border-border">
+      <tr>
+        <th className="px-2 py-4 text-left"></th>
+        <th 
+          className="px-6 py-4 text-left text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+          onClick={() => onSort('symbol')}
+        >
+          <div className="flex items-center">
+            Stock
+            <SortIcon column="symbol" />
+          </div>
+        </th>
+        <th 
+          className="px-6 py-4 text-left text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+          onClick={() => onSort('price')}
+        >
+          <div className="flex items-center">
+            Price
+            <SortIcon column="price" />
+          </div>
+        </th>
+        <th 
+          className="px-6 py-4 text-left text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+          onClick={() => onSort('position_size')}
+        >
+          <div className="flex items-center">
+            Position Size
+            <SortIcon column="position_size" />
+          </div>
+        </th>
+        <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+          % of Strategy
+        </th>
+        <th 
+          className="px-6 py-4 text-left text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+          onClick={() => onSort('strategy')}
+        >
+          <div className="flex items-center">
+            Strategy
+            <SortIcon column="strategy" />
+          </div>
+        </th>
+        <th 
+          className="px-6 py-4 text-left text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+          onClick={() => onSort('category')}
+        >
+          <div className="flex items-center">
+            Category
+            <SortIcon column="category" />
+          </div>
+        </th>
+        <th 
+          className="px-6 py-4 text-left text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+          onClick={() => onSort('risk_level')}
+        >
+          <div className="flex items-center">
+            Risk Level
+            <SortIcon column="risk_level" />
+          </div>
+        </th>
+        <th 
+          className="px-6 py-4 text-center text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+          onClick={() => onSort('notesCount')}
+        >
+          <div className="flex items-center justify-center">
+            Total Notes
+            <SortIcon column="notesCount" />
+          </div>
+        </th>
+        <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
+          Actions
+        </th>
+      </tr>
+    </thead>
+  );
+};
 
 const SortableTableRow: React.FC<{
   project: StockProject;
@@ -332,12 +389,30 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
   loading = false,
   error
 }) => {
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      // Cycle through: asc -> desc -> null
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortColumn(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
 
   if (loading) {
     return (
@@ -379,18 +454,46 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
     );
   }
 
-  // Sort projects by Strategy (desc), Category (desc), Risk Level (desc)
+  // Apply sorting
   const sortedProjects = [...projects].sort((a, b) => {
-    // Sort by strategy (descending)
-    const strategyCompare = (b.strategy || 'General').localeCompare(a.strategy || 'General');
-    if (strategyCompare !== 0) return strategyCompare;
-    
-    // Sort by category (descending)
-    const categoryCompare = (b.category || 'General').localeCompare(a.category || 'General');
-    if (categoryCompare !== 0) return categoryCompare;
-    
-    // Sort by risk level (descending)
-    return b.risk_level - a.risk_level;
+    if (!sortColumn || !sortDirection) {
+      // Default sort: Strategy (desc), Category (desc), Risk Level (desc)
+      const strategyCompare = (b.strategy || 'General').localeCompare(a.strategy || 'General');
+      if (strategyCompare !== 0) return strategyCompare;
+      
+      const categoryCompare = (b.category || 'General').localeCompare(a.category || 'General');
+      if (categoryCompare !== 0) return categoryCompare;
+      
+      return b.risk_level - a.risk_level;
+    }
+
+    // Custom sorting based on selected column
+    let comparison = 0;
+    switch (sortColumn) {
+      case 'symbol':
+        comparison = a.symbol.localeCompare(b.symbol);
+        break;
+      case 'price':
+        comparison = parseFloat(a.price) - parseFloat(b.price);
+        break;
+      case 'position_size':
+        comparison = a.position_size - b.position_size;
+        break;
+      case 'strategy':
+        comparison = (a.strategy || 'General').localeCompare(b.strategy || 'General');
+        break;
+      case 'category':
+        comparison = (a.category || 'General').localeCompare(b.category || 'General');
+        break;
+      case 'risk_level':
+        comparison = a.risk_level - b.risk_level;
+        break;
+      case 'notesCount':
+        comparison = a.notesCount - b.notesCount;
+        break;
+    }
+
+    return sortDirection === 'asc' ? comparison : -comparison;
   });
 
   // Group sorted projects by strategy
@@ -453,7 +556,7 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <TableHeader />
+                  <TableHeader sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
                   <tbody className="divide-y divide-border">
                     <SortableContext
                       items={strategyProjects.map(p => p.id)}
