@@ -527,6 +527,9 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
     }
   };
 
+  // Calculate overall total position size across all strategies
+  const overallTotalPositionSize = projects.reduce((sum, p) => sum + p.position_size, 0);
+
   return (
     <DndContext 
       sensors={sensors}
@@ -537,6 +540,7 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
         {strategies.map((strategy) => {
           const strategyProjects = groupedProjects[strategy];
           const totalPositionSize = strategyProjects.reduce((sum, p) => sum + p.position_size, 0);
+          const percentOfTotal = overallTotalPositionSize > 0 ? (totalPositionSize / overallTotalPositionSize) * 100 : 0;
           
           return (
             <div key={strategy} className="bg-card rounded-lg shadow-lg border border-border overflow-hidden">
@@ -550,7 +554,12 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">Total Position Size</p>
-                    <p className="text-xl font-bold text-primary">${totalPositionSize.toLocaleString()}</p>
+                    <p className="text-xl font-bold text-primary">
+                      ${totalPositionSize.toLocaleString()}
+                      <span className="text-sm font-normal text-muted-foreground ml-2">
+                        ({percentOfTotal.toFixed(1)}% of total)
+                      </span>
+                    </p>
                   </div>
                 </div>
               </div>
