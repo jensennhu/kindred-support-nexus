@@ -1,6 +1,6 @@
 // src/components/StockPositionsTable.tsx
 import React, { useState } from 'react';
-import { Target, Zap, AlertTriangle, Brain, ArrowRight, Trash2, Edit3, Save, X, GripVertical } from 'lucide-react';
+import { Target, AlertTriangle, ArrowRight, Trash2, Edit3, Save, X, GripVertical } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -14,9 +14,6 @@ interface StockProject {
   category: string;
   date: string;
   notesCount: number;
-  catalystsCount: number;
-  blockersCount: number;
-  researchCount: number;
   risk_level: number;
   position_size: number;
 }
@@ -67,24 +64,6 @@ const TableHeader = () => (
         Risk Level
       </th>
       <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
-        <div className="flex items-center justify-center gap-1">
-          <Zap className="w-4 h-4 text-bullish" />
-          Catalysts
-        </div>
-      </th>
-      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
-        <div className="flex items-center justify-center gap-1">
-          <AlertTriangle className="w-4 h-4 text-bearish" />
-          Blockers
-        </div>
-      </th>
-      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
-        <div className="flex items-center justify-center gap-1">
-          <Brain className="w-4 h-4 text-muted-foreground" />
-          Research
-        </div>
-      </th>
-      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
         Total Notes
       </th>
       <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
@@ -127,18 +106,6 @@ const SortableTableRow: React.FC<{
     opacity: isDragging ? 0.5 : 1,
   };
 
-  // Calculate sentiment score based on notes balance
-  const sentimentScore = project.catalystsCount - project.blockersCount;
-  const totalNotes = project.catalystsCount + project.blockersCount + project.researchCount;
-  const getBackgroundColor = () => {
-    if (totalNotes === 0) return 'bg-muted/20';
-    const ratio = sentimentScore / totalNotes;
-    if (ratio > 0.3) return 'bg-bullish/10';
-    if (ratio > 0) return 'bg-bullish/5';
-    if (ratio < -0.3) return 'bg-bearish/10';
-    if (ratio < 0) return 'bg-bearish/5';
-    return 'bg-warning/10';
-  };
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -179,7 +146,7 @@ const SortableTableRow: React.FC<{
     ref={setNodeRef}
     style={style}
     key={project.id} 
-    className={`hover:bg-accent/50 cursor-pointer transition-colors group ${getBackgroundColor()}`}
+    className="hover:bg-accent/50 cursor-pointer transition-colors group"
     onClick={() => !isEditing && onRowClick(project.symbol)}
     role="button"
     tabIndex={0}
@@ -301,21 +268,6 @@ const SortableTableRow: React.FC<{
           <span className="text-xs font-medium text-foreground">{project.risk_level}</span>
         </div>
       )}
-    </td>
-    <td className="px-6 py-4 text-center">
-      <div className="inline-flex items-center justify-center w-8 h-8 bg-bullish/20 text-bullish rounded-full font-bold">
-        {project.catalystsCount}
-      </div>
-    </td>
-    <td className="px-6 py-4 text-center">
-      <div className="inline-flex items-center justify-center w-8 h-8 bg-bearish/20 text-bearish rounded-full font-bold">
-        {project.blockersCount}
-      </div>
-    </td>
-    <td className="px-6 py-4 text-center">
-      <div className="inline-flex items-center justify-center w-8 h-8 bg-muted text-muted-foreground rounded-full font-bold">
-        {project.researchCount}
-      </div>
     </td>
     <td className="px-6 py-4 text-center">
       <span className="text-foreground font-medium">{project.notesCount}</span>
