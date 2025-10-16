@@ -55,6 +55,9 @@ const TableHeader = () => (
         Position Size
       </th>
       <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+        % of Strategy
+      </th>
+      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
         Strategy
       </th>
       <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
@@ -93,11 +96,12 @@ const TableHeader = () => (
 
 const SortableTableRow: React.FC<{
   project: StockProject;
+  strategyTotal: number;
   onRowClick: (symbol: string) => void;
   onAnalyzeClick: (symbol: string, e: React.MouseEvent) => void;
   onDeleteClick: (positionId: string, e: React.MouseEvent) => void;
   onUpdatePosition: (positionId: string, updates: { price?: string; position?: 'holding' | 'sold' | 'watching'; strategy?: string; category?: string; risk_level?: number; position_size?: number }) => Promise<void>;
-}> = ({ project, onRowClick, onAnalyzeClick, onDeleteClick, onUpdatePosition }) => {
+}> = ({ project, strategyTotal, onRowClick, onAnalyzeClick, onDeleteClick, onUpdatePosition }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     price: project.price,
@@ -233,6 +237,11 @@ const SortableTableRow: React.FC<{
           ${project.position_size.toLocaleString()}
         </span>
       )}
+    </td>
+    <td className="px-6 py-4">
+      <span className="text-muted-foreground font-medium">
+        {strategyTotal > 0 ? ((project.position_size / strategyTotal) * 100).toFixed(1) : '0.0'}%
+      </span>
     </td>
     <td className="px-6 py-4">
       {isEditing ? (
@@ -502,6 +511,7 @@ export const StockPositionsTable: React.FC<StockPositionsTableProps> = ({
                         <SortableTableRow
                           key={project.id}
                           project={project}
+                          strategyTotal={totalPositionSize}
                           onRowClick={onRowClick}
                           onAnalyzeClick={onAnalyzeClick}
                           onDeleteClick={onDeleteClick}
