@@ -112,12 +112,23 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
     if (!over) return;
   
     const activeId = active.id as string;
-    const overId = over.id as string;
+    let overId = over.id as string;
   
     if (activeId === overId) return;
   
     const activeNote = notes.find(n => n.id === activeId);
     if (!activeNote) return;
+
+    // If dropped on a note, find the droppable container it belongs to
+    const overNote = notes.find(n => n.id === overId);
+    if (overNote) {
+      // Construct the container ID from the note's category and parent category
+      if (overNote.category === "research") {
+        overId = "research-general";
+      } else {
+        overId = `${overNote.category}-${overNote.parentCategory}`;
+      }
+    }
 
     // Parse the drop zone ID
     if (overId.includes("-")) {
