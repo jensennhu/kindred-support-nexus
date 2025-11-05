@@ -43,12 +43,15 @@ interface DroppableContainerProps {
 }
 
 function DroppableContainer({ id, children }: DroppableContainerProps) {
-  const { setNodeRef, isOver } = useDroppable({ id });
+  const { setNodeRef, isOver } = useDroppable({ 
+    id,
+    data: { containerId: id }
+  });
 
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[120px] p-3 rounded-lg border-2 border-dashed transition-all ${
+      className={`min-h-[120px] p-3 rounded-lg border-2 border-dashed transition-all relative ${
         isOver 
           ? "bg-primary/10 border-primary shadow-md" 
           : "bg-muted border-border hover:border-border/80"
@@ -119,14 +122,20 @@ export const AnalysisBoard: React.FC<AnalysisBoardProps> = ({
     const activeNote = notes.find(n => n.id === activeId);
     if (!activeNote) return;
 
-    // If dropped on a note, find the droppable container it belongs to
-    const overNote = notes.find(n => n.id === overId);
-    if (overNote) {
-      // Construct the container ID from the note's category and parent category
-      if (overNote.category === "research") {
-        overId = "research-general";
-      } else {
-        overId = `${overNote.category}-${overNote.parentCategory}`;
+    // Check if we have container data from the droppable
+    const containerData = over.data.current?.containerId;
+    if (containerData && typeof containerData === 'string') {
+      overId = containerData;
+    } else {
+      // If dropped on a note, find the droppable container it belongs to
+      const overNote = notes.find(n => n.id === overId);
+      if (overNote) {
+        // Construct the container ID from the note's category and parent category
+        if (overNote.category === "research") {
+          overId = "research-general";
+        } else {
+          overId = `${overNote.category}-${overNote.parentCategory}`;
+        }
       }
     }
 
